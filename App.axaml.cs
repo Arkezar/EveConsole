@@ -33,17 +33,24 @@ public class App : Application
 
     public override void Initialize()
     {
-        LiveCharts.Configure(config =>
+        // Not for a worker, which draws no charts. ⚠️ Skia is native, and on Linux its library
+        // wants fontconfig, which a minimal container image has no reason to carry for a process
+        // that never draws.
+        if (!AppRuntime.IsHeadless)
         {
-            config.AddSkiaSharp().AddDefaultMappers();
+            LiveCharts.Configure(config =>
+            {
+                config.AddSkiaSharp().AddDefaultMappers();
 
-            // Charts draw their text with Skia, outside Avalonia's font fallback. LiveCharts finds
-            // a face for a character its own lacks, but by the character alone — and Chinese,
-            // Japanese and Korean share characters with different shapes, so a Chinese label
-            // could come out in a Japanese face. The language's own face, when it has one.
-            if (EveConsole.Localization.Languages.ChartTypeface() is { } face)
-                config.HasTextSettings(new TextSettings { DefaultTypeface = face });
-        });
+                // Charts draw their text with Skia, outside Avalonia's font fallback. LiveCharts
+                // finds a face for a character its own lacks, but by the character alone — and
+                // Chinese, Japanese and Korean share characters with different shapes, so a
+                // Chinese label could come out in a Japanese face. The language's own face, when
+                // it has one.
+                if (EveConsole.Localization.Languages.ChartTypeface() is { } face)
+                    config.HasTextSettings(new TextSettings { DefaultTypeface = face });
+            });
+        }
         AvaloniaXamlLoader.Load(this);
 
         // ⚠️ After the XAML is loaded and before any window exists. The palette lives in the
@@ -836,6 +843,57 @@ public class App : Application
             }
         }
 
+        // ⚠️ The same question asked of the tables themselves, by a client that may not change the
+        // schema. Versions only tell builds apart that have been numbered apart: a build from the
+        // same version with a table added — any development build — passed the check above, found
+        // its table missing, and failed inside the worklist generators instead ("relation
+        // CourierCargo does not exist", four of them at once), which is exactly the scattered
+        // breakage the version check exists to prevent. Every table the model maps must be there.
+        if (skipSchema && DbEngine.IsPostgres && await MissingTablesAsync() is { Count: > 0 } missing)
+        {
+            var list = string.Join(", ", missing.Take(8)) + (missing.Count > 8 ? ", …" : "");
+            errorLogger.Log("Startup", "the database lacks tables this build expects",
+                new InvalidOperationException($"missing tables: {string.Join(", ", missing)}"));
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime stopping)
+            {
+                splash?.ReportProgress(0, ShellText.SplashStoppingMismatch);
+                await ShowAndWaitAsync(new FatalDialog(ShellText.VersionMismatchHeading,
+                                                       string.Format(ShellText.SchemaBehindWorker, list)), splash);
+                stopping.Shutdown();
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    $"EVE Console: this build expects tables the database does not have ({list}). " +
+                    "Another client is running the background processes, and only it may change the schema: " +
+                    "update it to this build, or stop it and start this one first.");
+                Environment.Exit(1);
+            }
+            return;
+        }
+
+        // The model's tables the database does not have. Empty when it cannot be told — the check
+        // itself never stops a start.
+        async Task<List<string>> MissingTablesAsync()
+        {
+            try
+            {
+                using var scope = Services.CreateScope();
+                var db       = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var expected = db.Model.GetEntityTypes().Select(e => e.GetTableName()).OfType<string>().Distinct();
+                var have     = (await db.Database.SqlQueryRaw<string>(
+                        """SELECT table_name AS "Value" FROM information_schema.tables WHERE table_schema = current_schema()""")
+                    .ToListAsync()).ToHashSet();
+                return [.. expected.Where(t => !have.Contains(t)).OrderBy(t => t, StringComparer.Ordinal)];
+            }
+            catch (Exception ex)
+            {
+                errorLogger.Log("Startup", "checking the database's tables", ex);
+                return [];
+            }
+        }
+
         static Task ShowAndWaitAsync(Avalonia.Controls.Window dialog, Avalonia.Controls.Window? owner)
         {
             if (owner is not null) return dialog.ShowDialog(owner);
@@ -1055,6 +1113,11 @@ public class App : Application
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "LinkedContracts" TEXT NOT NULL DEFAULT ''"""); } catch { }
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "UnitsDelivered" INTEGER NOT NULL DEFAULT 0"""); } catch { }
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "UnitsContracted" INTEGER NOT NULL DEFAULT 0"""); } catch { }
+                // Orders off a store's Buy listing: the side, the listing, and what the
+                // contracts ask. Mirrored for PostgreSQL in PostgresSchema.
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "Side" TEXT NOT NULL DEFAULT 'sell'"""); } catch { }
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "PostingId" INTEGER NOT NULL DEFAULT 0"""); } catch { }
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "TrackedOrders" ADD COLUMN "ContractedPrice" REAL NOT NULL DEFAULT 0"""); } catch { }
 
 
                 // Sale Posting — postings → sections → items (see SalePostingModels.cs)
@@ -1188,6 +1251,24 @@ public class App : Application
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "Stores" ADD COLUMN "WebEveClientSecret" TEXT NOT NULL DEFAULT ''"""); } catch { }
                 // The language the shop speaks to buyers; empty for the app's own.
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "Stores" ADD COLUMN "Language" TEXT NOT NULL DEFAULT ''"""); } catch { }
+                // Who a Buy listing's contracts go to, and the store's listings. Mirrored for
+                // PostgreSQL in PostgresSchema.
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "Stores" ADD COLUMN "BuyAssigneeId" INTEGER NOT NULL DEFAULT 0"""); } catch { }
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "Stores" ADD COLUMN "BuyAssigneeType" TEXT NOT NULL DEFAULT ''"""); } catch { }
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "Stores" ADD COLUMN "BuyAssigneeName" TEXT NOT NULL DEFAULT ''"""); } catch { }
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "StorePostings" (
+                        "Id"        INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        "StoreId"   INTEGER NOT NULL DEFAULT 0,
+                        "PostingId" INTEGER NOT NULL DEFAULT 0,
+                        "Ordinal"   INTEGER NOT NULL DEFAULT 0,
+                        "Side"      TEXT    NOT NULL DEFAULT 'sell',
+                        "Title"     TEXT    NOT NULL DEFAULT ''
+                    )
+                    """);
+                db.Database.ExecuteSqlRaw("""
+                    CREATE INDEX IF NOT EXISTS "IX_StorePostings_StoreId" ON "StorePostings" ("StoreId")
+                    """);
 
 
                 db.Database.ExecuteSqlRaw("""
@@ -1378,6 +1459,22 @@ public class App : Application
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "SalePostingPosts" ADD COLUMN "Footer" TEXT NOT NULL DEFAULT ''"""); } catch { }
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "SalePostingPosts" ADD COLUMN "HeaderColor" TEXT NOT NULL DEFAULT ''"""); } catch { }
                 try { db.Database.ExecuteSqlRaw("""ALTER TABLE "SalePostingPosts" ADD COLUMN "FooterColor" TEXT NOT NULL DEFAULT ''"""); } catch { }
+
+                // Places a posting lists whatever is found in. Mirrored for PostgreSQL in PostgresSchema.
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "SalePostingLocations" (
+                        "Id"          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        "PostingId"   INTEGER NOT NULL DEFAULT 0,
+                        "Ordinal"     INTEGER NOT NULL DEFAULT 0,
+                        "StationId"   INTEGER NOT NULL DEFAULT 0,
+                        "OwnerType"   TEXT    NOT NULL DEFAULT '',
+                        "OwnerId"     INTEGER NOT NULL DEFAULT 0,
+                        "Flag"        TEXT    NOT NULL DEFAULT '',
+                        "ContainerId" INTEGER NOT NULL DEFAULT 0,
+                        "Path"        TEXT    NOT NULL DEFAULT '',
+                        "Title"       TEXT    NOT NULL DEFAULT ''
+                    )
+                    """);
 
                 // Market price history — on-demand ESI fetch cache
                 db.Database.ExecuteSqlRaw("""
@@ -1964,6 +2061,42 @@ public class App : Application
                         "UpgradeLevel"  INTEGER NOT NULL DEFAULT 0,
                         PRIMARY KEY ("CharacterId", "PlanetId")
                     )
+                    """);
+
+                // ── Hauls ticked off at a loop's stops ──────────────────────────────
+                // Held only until the asset poll catches up. Mirrored for PostgreSQL in PostgresSchema.
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "HaulMarks" (
+                        "Id"          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        "PilotId"     INTEGER NOT NULL DEFAULT 0,
+                        "FromId"      INTEGER NOT NULL DEFAULT 0,
+                        "ToId"        INTEGER NOT NULL DEFAULT 0,
+                        "TypeId"      INTEGER NOT NULL DEFAULT 0,
+                        "Units"       INTEGER NOT NULL DEFAULT 0,
+                        "OwnerType"   TEXT    NOT NULL DEFAULT 'character',
+                        "OwnerId"     INTEGER NOT NULL DEFAULT 0,
+                        "PickedAt"    TEXT    NOT NULL,
+                        "DeliveredAt" TEXT    NULL
+                    )
+                    """);
+
+                // ── What is in our courier contracts, entered by hand ───────────────
+                // ESI never lists a courier's cargo. Mirrored for PostgreSQL in PostgresSchema.
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "CourierCargo" (
+                        "Id"         INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        "ContractId" INTEGER NOT NULL DEFAULT 0,
+                        "FromId"     INTEGER NOT NULL DEFAULT 0,
+                        "ToId"       INTEGER NOT NULL DEFAULT 0,
+                        "TypeId"     INTEGER NOT NULL DEFAULT 0,
+                        "Quantity"   INTEGER NOT NULL DEFAULT 0,
+                        "OwnerType"  TEXT    NOT NULL DEFAULT 'character',
+                        "OwnerId"    INTEGER NOT NULL DEFAULT 0,
+                        "AddedAt"    TEXT    NOT NULL
+                    )
+                    """);
+                db.Database.ExecuteSqlRaw("""
+                    CREATE INDEX IF NOT EXISTS "IX_CourierCargo_ContractId" ON "CourierCargo" ("ContractId")
                     """);
 
                 // ── Planetary Industry: colony layouts ──────────────────────────────
@@ -3352,9 +3485,14 @@ public class App : Application
                         "NearestCelestial"   TEXT    NOT NULL DEFAULT '',
                         "Status"             INTEGER NOT NULL DEFAULT 0,
                         "Notes"              TEXT    NOT NULL DEFAULT '',
+                        "FacesTowardId"      INTEGER NOT NULL DEFAULT 0,
                         "UpdatedBy"          TEXT    NOT NULL DEFAULT 'esi',
                         "UpdatedAt"          TEXT    NOT NULL DEFAULT '2000-01-01 00:00:00+00:00')
                     """,
+                    // Which way a structure faces, added later: 0, not set, for every existing row.
+                    // Throws "duplicate column" where it is already there, which the loop's catch
+                    // takes as success. Mirrored in PostgresSchema.
+                    """ALTER TABLE "Structures" ADD COLUMN "FacesTowardId" INTEGER NOT NULL DEFAULT 0""",
                     """
                     CREATE TABLE IF NOT EXISTS "StructureFittings" (
                         "Id"          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
