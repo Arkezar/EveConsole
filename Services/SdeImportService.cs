@@ -52,6 +52,8 @@ public class SdeImportService
             .IgnoreUnmatchedProperties()
             // Every localised field — see LocalizedTextConverter for why not YamlDotNet's own.
             .WithTypeConverter(new LocalizedTextConverter())
+            // A field kept whole, as JSON, by a class that does not need its parts. See SdeJson.
+            .WithTypeConverter(new SdeJsonConverter())
             .Build();
     }
 
@@ -124,7 +126,12 @@ public class SdeImportService
             // now holds none" rather than merely "races is empty" — which on a first import is the
             // plain truth and no cause for alarm.
             Report(progress, SettingsText.ImportStagePreparing, SettingsText.SdeReadingRowCounts, 0.305);
-            var tables = BulkImport.TablesFor(db, "Sde", "SdeBuildInfos");
+            // The rest of the SDE, which the typed stages below do not read: worked out now and its
+            // tables made, so they are emptied, set aside and verified with all the others. See
+            // SdeCompleteness.
+            var completeness = await SdeCompleteness.PrepareAsync(db, archive, fsdRoot, TypedFiles, ct);
+            var tables = BulkImport.TablesFor(db, "Sde", "SdeBuildInfos")
+                .Concat(completeness.Tables).Distinct(StringComparer.Ordinal).ToList();
             var before = await BulkImport.CountAsync(db, tables, ct);
 
             // ⚠️ The wipe and the refill are undoable as one unit. A failure anywhere — a changed
@@ -168,6 +175,8 @@ public class SdeImportService
             await ImportRacesAsync(archive, fsdRoot, db, progress, ct);
             await ImportMetaGroupsAsync(archive, fsdRoot, db, progress, ct);
             await ImportCertificatesAsync(archive, fsdRoot, db, progress, ct);
+            await ImportCompressibleTypesAsync(archive, fsdRoot, db, progress, ct);
+            await ImportAccountingEntryTypesAsync(archive, fsdRoot, db, progress, ct);
             await ImportTypeMaterialsAsync(archive, fsdRoot, db, progress, ct);
             await ImportPlanetSchematicsAsync(archive, fsdRoot, db, progress, ct);
             await ImportDogmaUnitsAsync(archive, fsdRoot, db, progress, ct);
@@ -175,6 +184,10 @@ public class SdeImportService
             await ImportGraphicsAsync(archive, fsdRoot, db, progress, ct);
             await ImportSkinsAsync(archive, fsdRoot, db, progress, ct);
             await ImportSkinLicensesAsync(archive, fsdRoot, db, progress, ct);
+
+            // Last of the file stages: every field and file the stages above do not read.
+            await completeness.RunAsync(db,
+                (file, frac) => Report(progress, SettingsText.ImportStageRestOfSde, file, frac), 0.993, 0.997, ct);
 
             // Last of the stages, because it is built from theirs: see the method.
             var stationNames = await ImportStationNamesAsync(db, customNames, progress, ct);
@@ -208,6 +221,7 @@ public class SdeImportService
             Report(progress, SettingsText.ImportStageVerifying, SettingsText.ImportCheckingRowCounts, 0.99);
             var (lost, warnings) = BulkImport.Compare(
                 before, await BulkImport.CountAsync(db, tables, ct));
+            warnings.AddRange(completeness.Warnings);
 
             if (lost.Count > 0)
             {
@@ -486,6 +500,14 @@ public class SdeImportService
             // database the fingerprint grows and the import that fills them starts on its own.
             // Mirrored for PostgreSQL in PostgresSchema.
             """CREATE TABLE IF NOT EXISTS "SdePlanetSchematicPins" ("SchematicId" INTEGER NOT NULL, "PinTypeId" INTEGER NOT NULL, CONSTRAINT "PK_SdePlanetSchematicPins" PRIMARY KEY ("SchematicId", "PinTypeId"))""",
+            // Certificates' skills and recommended ships, compression, and the journal's entry
+            // types: SDE content that used to be left in the file. New tables, so the fingerprint
+            // grows and the import that fills them starts on its own. Mirrored for PostgreSQL in
+            // PostgresSchema.
+            """CREATE TABLE IF NOT EXISTS "SdeCertificateSkills" ("CertificateId" INTEGER NOT NULL, "SkillTypeId" INTEGER NOT NULL, "Basic" INTEGER NOT NULL DEFAULT 0, "Standard" INTEGER NOT NULL DEFAULT 0, "Improved" INTEGER NOT NULL DEFAULT 0, "Advanced" INTEGER NOT NULL DEFAULT 0, "Elite" INTEGER NOT NULL DEFAULT 0, CONSTRAINT "PK_SdeCertificateSkills" PRIMARY KEY ("CertificateId", "SkillTypeId"))""",
+            """CREATE TABLE IF NOT EXISTS "SdeCertificateRecommendations" ("CertificateId" INTEGER NOT NULL, "ShipTypeId" INTEGER NOT NULL, CONSTRAINT "PK_SdeCertificateRecommendations" PRIMARY KEY ("CertificateId", "ShipTypeId"))""",
+            """CREATE TABLE IF NOT EXISTS "SdeCompressibleTypes" ("TypeId" INTEGER NOT NULL, "CompressedTypeId" INTEGER NOT NULL, CONSTRAINT "PK_SdeCompressibleTypes" PRIMARY KEY ("TypeId"))""",
+            """CREATE TABLE IF NOT EXISTS "SdeAccountingEntryTypes" ("EntryTypeId" INTEGER NOT NULL, "InternalName" TEXT NOT NULL DEFAULT '', "Name" TEXT NOT NULL DEFAULT '', "Description" TEXT NOT NULL DEFAULT '', "JournalMessage" TEXT NOT NULL DEFAULT '', CONSTRAINT "PK_SdeAccountingEntryTypes" PRIMARY KEY ("EntryTypeId"))""",
             """CREATE TABLE IF NOT EXISTS "SdePlanetTypeResources" ("PlanetTypeId" INTEGER NOT NULL, "ResourceTypeId" INTEGER NOT NULL, "PlanetType" TEXT NOT NULL DEFAULT '', CONSTRAINT "PK_SdePlanetTypeResources" PRIMARY KEY ("PlanetTypeId", "ResourceTypeId"))""",
         };
         foreach (var sql in creates)
@@ -502,6 +524,14 @@ public class SdeImportService
             """ALTER TABLE "SdeTypes"  ADD COLUMN "FactionId"  INTEGER""",
             """ALTER TABLE "SdeTypes"  ADD COLUMN "RaceId"     INTEGER""",
             """ALTER TABLE "SdeTypes"  ADD COLUMN "MetaGroupId" INTEGER""",
+            // Planets, moons, belts and stars: the rest of what the SDE says about each.
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "OrbitId" INTEGER""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "Radius" REAL""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "Attributes" TEXT""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "Statistics" TEXT""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "MoonIds" TEXT""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "AsteroidBeltIds" TEXT""",
+            """ALTER TABLE "SdeCelestials" ADD COLUMN "NpcStationIds" TEXT""",
             // Map geometry, added for the Universe tool.
             """ALTER TABLE "SdeRegions"        ADD COLUMN "X" REAL NOT NULL DEFAULT 0""",
             """ALTER TABLE "SdeRegions"        ADD COLUMN "Y" REAL NOT NULL DEFAULT 0""",
@@ -1186,6 +1216,7 @@ public class SdeImportService
                             // what every other celestial's orbital radius is measured from.
                             Kind = 4, X = 0, Y = 0, Z = 0,
                             Name = sysNames.GetValueOrDefault(st.solarSystemID, ""),
+                            Radius = st.radius, Statistics = st.statistics?.Text,
                         });
             }
         }
@@ -1229,7 +1260,9 @@ public class SdeImportService
                 if (pl.position is { } pp)
                     celestials.Add(new SdeCelestial { ItemId = pid, SolarSystemId = pl.solarSystemID,
                         TypeId = pl.typeID, Kind = 0, X = pp.x, Y = pp.y, Z = pp.z,
-                        Name = Named(pid, pl, $"{sysNames.GetValueOrDefault(pl.solarSystemID, "")} {RomanNumeral(pl.celestialIndex)}".Trim()) });
+                        Name = Named(pid, pl, $"{sysNames.GetValueOrDefault(pl.solarSystemID, "")} {RomanNumeral(pl.celestialIndex)}".Trim()),
+                        OrbitId = pl.orbitID, Radius = pl.radius, Attributes = pl.attributes?.Text, Statistics = pl.statistics?.Text,
+                        MoonIds = pl.moonIDs?.Text, AsteroidBeltIds = pl.asteroidBeltIDs?.Text, NpcStationIds = pl.npcStationIDs?.Text });
         }
 
         Report(p, SettingsText.ImportStageUniverse, Parsing("mapMoons.yaml"), 0.84);
@@ -1242,7 +1275,9 @@ public class SdeImportService
                 if (mo.position is { } mp)
                     celestials.Add(new SdeCelestial { ItemId = mid, SolarSystemId = mo.solarSystemID,
                         TypeId = mo.typeID, Kind = 1, X = mp.x, Y = mp.y, Z = mp.z,
-                        Name = Named(mid, mo, $"{sysNames.GetValueOrDefault(mo.solarSystemID, "")} {RomanNumeral(mo.celestialIndex)} - Moon {mo.orbitIndex}".Trim()) });
+                        Name = Named(mid, mo, $"{sysNames.GetValueOrDefault(mo.solarSystemID, "")} {RomanNumeral(mo.celestialIndex)} - Moon {mo.orbitIndex}".Trim()),
+                        OrbitId = mo.orbitID, Radius = mo.radius, Attributes = mo.attributes?.Text, Statistics = mo.statistics?.Text,
+                        NpcStationIds = mo.npcStationIDs?.Text });
         }
 
         // Asteroid belts. CCP has shipped these under more than one name across SDE revisions,
@@ -1262,6 +1297,7 @@ public class SdeImportService
                     {
                         ItemId = bid, SolarSystemId = b.solarSystemID, TypeId = b.typeID,
                         Kind = 3, X = bp.x, Y = bp.y, Z = bp.z,
+                        OrbitId = b.orbitID, Radius = b.radius, Statistics = b.statistics?.Text,
                         Name = Named(bid, b, $"{sysNames.GetValueOrDefault(b.solarSystemID, "")} " +
                                              $"{RomanNumeral(b.celestialIndex)} - Asteroid Belt {b.orbitIndex}".Trim()),
                     });
@@ -1763,6 +1799,67 @@ public class SdeImportService
         await SaveBatchesAsync(db, db.SdeCertificates, rows, SettingsText.ImportStageCertificates, raw.Count, p, 0.96, 0.97, ct);
         await SaveNamesAsync(db, SdeNameKind.Certificate, raw.Select(kv => ((long)kv.Key, kv.Value.name)), p, 0.97, ct);
         await SaveTextsAsync(db, SdeTextKind.CertificateDescription, raw.Select(kv => ((long)kv.Key, kv.Value.description)), p, 0.97, ct);
+
+        // What each certificate is made of — the skill levels at each of its five levels — and the
+        // ships it is recommended for. Both used to be left in the file.
+        var skills = raw.SelectMany(kv => (kv.Value.skillTypes ?? []).Select(s => new SdeCertificateSkill
+        {
+            CertificateId = kv.Key,
+            SkillTypeId   = s.Key,
+            Basic         = s.Value.basic,
+            Standard      = s.Value.standard,
+            Improved      = s.Value.improved,
+            Advanced      = s.Value.advanced,
+            Elite         = s.Value.elite,
+        })).ToList();
+        await SaveBatchesAsync(db, db.SdeCertificateSkills, skills, SettingsText.ImportStageCertificates, skills.Count, p, 0.97, 0.97, ct);
+
+        var ships = raw.SelectMany(kv => (kv.Value.recommendedFor ?? []).Distinct()
+                .Select(ship => new SdeCertificateRecommendation { CertificateId = kv.Key, ShipTypeId = ship }))
+            .ToList();
+        await SaveBatchesAsync(db, db.SdeCertificateRecommendations, ships, SettingsText.ImportStageCertificates, ships.Count, p, 0.97, 0.97, ct);
+    }
+
+    /// <summary>What each ore, ice and gas compresses into (compressibleTypes.yaml).</summary>
+    private async Task ImportCompressibleTypesAsync(ZipArchive zip, string fsdRoot, AppDbContext db,
+        IProgress<SdeImportProgress> p, CancellationToken ct)
+    {
+        var entry = zip.GetEntry($"{fsdRoot}compressibleTypes.yaml");
+        if (entry is null) { Report(p, SettingsText.ImportStageCompressibleTypes, SettingsText.SdeNotFoundInZip, 0.971); return; }
+        Report(p, SettingsText.ImportStageCompressibleTypes, SettingsText.ImportParsing, 0.971);
+        using var reader = OpenEntry(entry);
+        var raw = _yaml.Deserialize<Dictionary<int, CompressibleTypeYaml>>(reader) ?? [];
+        var rows = raw.Where(kv => kv.Value.compressedTypeID > 0)
+            .Select(kv => new SdeCompressibleType { TypeId = kv.Key, CompressedTypeId = kv.Value.compressedTypeID })
+            .ToList();
+        await SaveBatchesAsync(db, db.SdeCompressibleTypes, rows, SettingsText.ImportStageCompressibleTypes, rows.Count, p, 0.971, 0.972, ct);
+    }
+
+    /// <summary>
+    /// The wallet journal's entry types as the game names them (accountingEntryTypes.yaml): the
+    /// internal name ESI calls a ref_type, the name and description the client shows, and the
+    /// journal line's own sentence — the English here, the other languages as names and texts.
+    /// </summary>
+    private async Task ImportAccountingEntryTypesAsync(ZipArchive zip, string fsdRoot, AppDbContext db,
+        IProgress<SdeImportProgress> p, CancellationToken ct)
+    {
+        var entry = zip.GetEntry($"{fsdRoot}accountingEntryTypes.yaml");
+        if (entry is null) { Report(p, SettingsText.ImportStageAccountingEntryTypes, SettingsText.SdeNotFoundInZip, 0.973); return; }
+        Report(p, SettingsText.ImportStageAccountingEntryTypes, SettingsText.ImportParsing, 0.973);
+        using var reader = OpenEntry(entry);
+        var raw = _yaml.Deserialize<Dictionary<int, AccountingEntryTypeYaml>>(reader) ?? [];
+        var rows = raw.Select(kv => new SdeAccountingEntryType
+        {
+            EntryTypeId    = kv.Key,
+            InternalName   = kv.Value.internalName ?? "",
+            Name           = kv.Value.name?.en           ?? "",
+            Description    = kv.Value.description?.en    ?? "",
+            JournalMessage = kv.Value.journalMessage?.en ?? "",
+        }).ToList();
+        await SaveBatchesAsync(db, db.SdeAccountingEntryTypes, rows, SettingsText.ImportStageAccountingEntryTypes, rows.Count, p, 0.973, 0.974, ct);
+        await SaveNamesAsync(db, SdeNameKind.AccountingEntryType, raw.Select(kv => ((long)kv.Key, kv.Value.name)), p, 0.974, ct);
+        await SaveTextsAsync(db, SdeTextKind.AccountingEntryDescription, raw.Select(kv => ((long)kv.Key, kv.Value.description)), p, 0.974, ct);
+        await SaveTextsAsync(db, SdeTextKind.AccountingEntryJournalMessage, raw.Select(kv => ((long)kv.Key, kv.Value.journalMessage)), p, 0.975, ct);
     }
 
     /// <summary>
@@ -2834,6 +2931,9 @@ public class SdeImportService
         public int           solarSystemID  { get; set; }
         public int           typeID         { get; set; }
         public PositionYaml? position       { get; set; }
+        public long?         orbitID        { get; set; }
+        public double?       radius         { get; set; }
+        public SdeJson?      statistics     { get; set; }
     }
     private class MoonYaml
     {
@@ -2843,12 +2943,22 @@ public class SdeImportService
     // Flat universe (current SDE): mapPlanets.yaml / mapMoons.yaml are separate top-level files.
     // Moons carry celestialIndex (of their planet) + orbitIndex (moon number), so a moon can be
     // named without joining back to its planet.
+    // ⚠️ Planets, moons and belts keep their other fields here rather than through
+    // SdeCompleteness: there are 412,000 of them, and reading them a second time, generically, to
+    // update each row would add minutes to every import. The typed read takes them on its way past.
     private class MapPlanetYaml : NamedCelestialYaml
     {
         public int           celestialIndex { get; set; }
         public int           solarSystemID  { get; set; }
         public int           typeID         { get; set; }
         public PositionYaml? position       { get; set; }
+        public long?         orbitID        { get; set; }
+        public double?       radius         { get; set; }
+        public SdeJson?      attributes     { get; set; }   // heightMap1/2, shaderPreset, population
+        public SdeJson?      statistics     { get; set; }   // density, temperature, orbit and the rest
+        public SdeJson?      moonIDs        { get; set; }
+        public SdeJson?      asteroidBeltIDs { get; set; }
+        public SdeJson?      npcStationIDs  { get; set; }
     }
     private class MapMoonYaml : NamedCelestialYaml
     {
@@ -2857,6 +2967,11 @@ public class SdeImportService
         public int           solarSystemID  { get; set; }
         public int           typeID         { get; set; }
         public PositionYaml? position       { get; set; }
+        public long?         orbitID        { get; set; }
+        public double?       radius         { get; set; }
+        public SdeJson?      attributes     { get; set; }
+        public SdeJson?      statistics     { get; set; }
+        public SdeJson?      npcStationIDs  { get; set; }
     }
 
     // New flat-universe DTOs
@@ -2910,9 +3025,66 @@ public class SdeImportService
     /// spectral class the system view shows ("Sun K5 (Orange Bright)").</summary>
     private class MapStarYaml
     {
-        public int solarSystemID { get; set; }
-        public int typeID        { get; set; }
+        public int      solarSystemID { get; set; }
+        public int      typeID        { get; set; }
+        public double?  radius        { get; set; }
+        public SdeJson? statistics    { get; set; }
     }
+
+    /// <summary>
+    /// The files the typed stages read, and where a field they do not read is kept: on the named
+    /// table, which has a row per record, or — null — in a table of its own beside it. No classes:
+    /// read wholly some other way. See SdeCompleteness.
+    /// </summary>
+    /// <remarks>⚠️ A new typed stage adds its file here, or SdeCompleteness copies the whole file
+    /// into a table of its own as well.</remarks>
+    private static readonly SdeCompleteness.TypedFile[] TypedFiles =
+    [
+        new("categories.yaml",               "SdeCategories",               [typeof(CategoryYaml)]),
+        new("groups.yaml",                   "SdeGroups",                   [typeof(GroupYaml)]),
+        new("marketGroups.yaml",             "SdeMarketGroups",             [typeof(MarketGroupYaml)]),
+        new("types.yaml",                    "SdeTypes",                    [typeof(TypeYaml), typeof(TypeDescriptionYaml)]),
+        new("dogmaAttributeCategories.yaml", "SdeDogmaAttributeCategories", [typeof(DogmaAttrCategoryYaml)]),
+        new("dogmaAttributes.yaml",          "SdeDogmaAttributes",          [typeof(DogmaAttributeYaml)]),
+        new("dogmaEffects.yaml",             "SdeDogmaEffects",             [typeof(DogmaEffectYaml)]),
+        new("typeDogma.yaml",                null,                          [typeof(TypeDogmaYaml)]),
+        new("blueprints.yaml",               null,                          [typeof(BlueprintYaml)], Ignore: ["blueprintTypeID"]),   // the key again
+        new("mapRegions.yaml",               "SdeRegions",                  [typeof(MapRegionYaml)]),
+        new("mapConstellations.yaml",        "SdeConstellations",           [typeof(MapConstellationYaml)]),
+        new("mapSolarSystems.yaml",          "SdeSolarSystems",             [typeof(MapSolarSystemYaml)]),
+        new("mapStars.yaml",                 "SdeCelestials",               [typeof(MapStarYaml)]),
+        new("mapStargates.yaml",             "SdeStargates",                [typeof(MapStargateYaml)]),
+        new("mapPlanets.yaml",               "SdeCelestials",               [typeof(MapPlanetYaml)]),
+        new("mapMoons.yaml",                 "SdeCelestials",               [typeof(MapMoonYaml)]),
+        new("mapAsteroidBelts.yaml",         "SdeCelestials",               [typeof(MapAsteroidBeltYaml)]),
+        new("planetResources.yaml",          "SdePlanetResources",          [typeof(PlanetResourceYaml)]),
+        new("agentTypes.yaml",               "SdeAgentTypes",               [typeof(AgentTypeYaml)]),
+        new("npcCorporationDivisions.yaml",  "SdeCorpDivisions",            [typeof(CorpDivisionYaml)]),
+        // Only the agents among the NPC characters are typed (SdeAgents); every character, with
+        // every field, is kept whole as SdeNpcCharacters.
+        new("npcCharacters.yaml",            null,                          [typeof(NpcCharacterYaml)], FullCopy: true),
+        new("npcStations.yaml",              "SdeStations",                 [typeof(NpcStationYaml)]),
+        new("factions.yaml",                 "SdeFactions",                 [typeof(FactionYaml)]),
+        new("npcCorporations.yaml",          "SdeNpcCorporations",          [typeof(NpcCorpYaml)]),
+        new("industryModifierSources.yaml",  null,                          []),
+        new("races.yaml",                    "SdeRaces",                    [typeof(RaceYaml)]),
+        new("metaGroups.yaml",               "SdeMetaGroups",               [typeof(MetaGroupYaml)]),
+        new("certificates.yaml",             "SdeCertificates",             [typeof(CertificateYaml)]),
+        new("compressibleTypes.yaml",        "SdeCompressibleTypes",        [typeof(CompressibleTypeYaml)]),
+        new("accountingEntryTypes.yaml",     "SdeAccountingEntryTypes",     [typeof(AccountingEntryTypeYaml)]),
+        new("fighterAbilities.yaml",         "SdeFighterAbilities",         [typeof(FighterAbilityYaml)]),
+        new("fighterAbilitiesByType.yaml",   null,                          []),
+        new("dbuffCollections.yaml",         "SdeDbuffs",                   [typeof(DbuffYaml)]),
+        new("typeMaterials.yaml",            null,                          [typeof(TypeMaterialsYaml)]),
+        new("planetSchematics.yaml",         "SdePlanetSchematics",         [typeof(PlanetSchematicYaml)]),
+        new("dogmaUnits.yaml",               "SdeDogmaUnits",               [typeof(DogmaUnitYaml)]),
+        new("icons.yaml",                    "SdeIcons",                    [typeof(IconYaml)]),
+        new("graphics.yaml",                 "SdeGraphics",                 [typeof(GraphicYaml)]),
+        new("skins.yaml",                    "SdeSkins",                    [typeof(SkinYaml)]),
+        new("skinLicenses.yaml",             "SdeSkinLicenses",             [typeof(SkinLicenseYaml)], Ignore: ["licenseTypeID"]),   // the key again
+        new("stationServices.yaml",          "SdeStationServices",          [typeof(StationServiceYaml)]),
+        new("stationOperations.yaml",        "SdeStationOperations",        [typeof(StationOperationYaml)]),
+    ];
     private class MapStargateYaml
     {
         public int              solarSystemID { get; set; }
@@ -3113,6 +3285,27 @@ public class SdeImportService
         // which LocalizedTextConverter reads as the English.
         public LocalizedName?   name        { get; set; }
         public LocalizedName?   description { get; set; }   // every language, for SdeTexts
+        /// <summary>Skill type → the level needed at each certificate level.</summary>
+        public Dictionary<int, CertificateSkillLevelsYaml>? skillTypes { get; set; }
+        public List<int>?       recommendedFor { get; set; }
+    }
+    private class CertificateSkillLevelsYaml
+    {
+        public int basic    { get; set; }
+        public int standard { get; set; }
+        public int improved { get; set; }
+        public int advanced { get; set; }
+        public int elite    { get; set; }
+    }
+
+    private class CompressibleTypeYaml { public int compressedTypeID { get; set; } }
+
+    private class AccountingEntryTypeYaml
+    {
+        public string?        internalName   { get; set; }
+        public LocalizedName? name           { get; set; }
+        public LocalizedName? description    { get; set; }
+        public LocalizedName? journalMessage { get; set; }
     }
 
     private class TypeMaterialsYaml

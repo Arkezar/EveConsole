@@ -105,6 +105,27 @@ public partial class ProductionCalculatorView : UserControl
         await CopyToClipboardAsync(sb.ToString());
     }
 
+    // ── Per-facility shopping lists (Jobs tab, station view) ──────────────
+    // Bought materials only, as for a job: one built here or elsewhere has its own job.
+
+    private async void OnStationShoppingListClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not JobStationGroup group) return;
+        var sb = new StringBuilder();
+        foreach (var mat in group.Materials.Where(m => m.IsBought))
+            sb.Append(mat.TypeName).Append('\t').AppendLine(mat.Needed.ToString());
+        await CopyToClipboardAsync(sb.ToString());
+    }
+
+    private async void OnStationShoppingListMissingClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not JobStationGroup group) return;
+        var sb = new StringBuilder();
+        foreach (var mat in group.Materials.Where(m => m.IsBought && m.Missing > 0))
+            sb.Append(mat.TypeName).Append('\t').AppendLine(mat.Missing.ToString());
+        await CopyToClipboardAsync(sb.ToString());
+    }
+
     /// <summary>The raw materials export's header row, in the grid's own column names, ending in a
     /// newline. ⚠️ In a CSV a header holding a comma is quoted, as a material name is: the names
     /// are translated, and a translation may have one.</summary>
@@ -179,13 +200,45 @@ public partial class ProductionCalculatorView : UserControl
     private void OnOpenJobStation(object? sender, RoutedEventArgs e) => Job(sender)?.OpenStation();
     private void OnOpenJobSystem(object? sender, RoutedEventArgs e)  => Job(sender)?.OpenSystem();
 
+    private static JobStationGroup? Group(object? sender) => (sender as Control)?.DataContext as JobStationGroup;
+
+    private void OnOpenGroupStation(object? sender, RoutedEventArgs e) => Group(sender)?.Lead.OpenStation();
+    private void OnOpenGroupSystem(object? sender, RoutedEventArgs e)  => Group(sender)?.Lead.OpenSystem();
+
+    private void OnOpenStationMaterial(object? sender, RoutedEventArgs e) =>
+        ((sender as Control)?.DataContext as StationMaterialLine)?.OpenItem();
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Copies, and says so. ⚠️ An empty list is not copied: putting nothing on the clipboard
+    /// would wipe whatever was there, for a button whose answer was "nothing is missing".
+    /// </summary>
     private async Task CopyToClipboardAsync(string text)
     {
+        if (text.Length == 0) { ShowToast(IndustryText.ToastNothingToCopy); return; }
+
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        if (clipboard is not null)
-            await clipboard.SetTextAsync(text);
+        if (clipboard is null) return;
+        await clipboard.SetTextAsync(text);
+        ShowToast(IndustryText.ToastCopied);
+    }
+
+    private int _toastShown;
+
+    /// <summary>Shows the message in the middle of the window for a moment, then fades it. A second
+    /// copy while one is showing starts the moment again rather than being cut short by the first.</summary>
+    private async void ShowToast(string message)
+    {
+        var toast = this.FindControl<Border>("CopyToast");
+        var text  = this.FindControl<TextBlock>("CopyToastText");
+        if (toast is null || text is null) return;
+
+        var mine = ++_toastShown;
+        text.Text     = message;
+        toast.Opacity = 1;
+        await Task.Delay(TimeSpan.FromSeconds(1.6));
+        if (mine == _toastShown) toast.Opacity = 0;
     }
 
     private async Task SaveToFileAsync(string content, string suggestedName, FilePickerFileType fileType)
