@@ -91,14 +91,92 @@
   <data name="Min30dUnitVol" xml:space="preserve">
     <value>Мин. объём торгов за 30 д (ед.)</value>
   </data>
-  <data name="SkipFaction" xml:space="preserve">
-    <value>Пропускать фракционные</value>
-  </data>
   <data name="SkipNonBpoTraceableItems" xml:space="preserve">
     <value>Пропускать предметы без доступного BPO</value>
   </data>
   <data name="TipOnlyItemsWhoseBlueprint" xml:space="preserve">
     <value>Только предметы, чертёж которых — покупаемый BPO или получается из него модернизацией (например, T2 из T1 BPO). Исключает фракционные предметы и предметы из BPC с ограниченным числом прогонов, для которых нельзя получить BPO, наградные, командирские и экспериментальные предметы, а также предметы событий с пометкой «Limited Time», чей BPO больше нельзя купить в игре.</value>
+  </data>
+  <data name="OnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Только мои чертежи</value>
+  </data>
+  <data name="TipOnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Только предметы, чей собственный чертёж (оригинал или копия) есть у одного из ваших персонажей или у корпорации, отмеченной как личная. Применяется при следующем расчёте.</value>
+  </data>
+  <data name="MinMarginPct" xml:space="preserve">
+    <value>Мин. маржа %</value>
+  </data>
+  <data name="TipMinMargin" xml:space="preserve">
+    <value>Только предметы, у которых маржа (прибыль к стоимости производства, столбец «Маржа») не ниже этого процента. Применяется при следующем расчёте.</value>
+  </data>
+  <data name="OppsErrMinMargin" xml:space="preserve">
+    <value>Введите корректную минимальную маржу в процентах (или оставьте пустым, чтобы не фильтровать).</value>
+  </data>
+  <data name="IncludeGroups" xml:space="preserve">
+    <value>Включить группы</value>
+  </data>
+  <data name="TipIncludeGroups" xml:space="preserve">
+    <value>Если выбраны, только предметы из этих рыночных групп и групп под ними. Исключённые группы действуют и внутри них. Применяется при следующем расчёте.</value>
+  </data>
+  <data name="TipRemoveThisInclusion" xml:space="preserve">
+    <value>Убрать эту группу</value>
+  </data>
+  <data name="MinMargin30dPct" xml:space="preserve">
+    <value>Мин. маржа % 30 д</value>
+  </data>
+  <data name="TipMinMargin30d" xml:space="preserve">
+    <value>Только предметы, у которых маржа по средней цене за 30 дней (столбец «Маржа 30 д») не ниже этого процента. Предметы, не продававшиеся последние 30 дней, исключаются. Применяется при следующем расчёте.</value>
+  </data>
+  <data name="OppsErrMinMargin30d" xml:space="preserve">
+    <value>Введите корректную минимальную маржу за 30 дней в процентах (или оставьте пустым, чтобы не фильтровать).</value>
+  </data>
+  <data name="OppsReportHistoryPriced" xml:space="preserve">
+    <value>* Нет ордеров на продажу: цена по средней за 30 дней.</value>
+  </data>
+  <data name="MetaGroupsLabel" xml:space="preserve">
+    <value>Мета-группы</value>
+  </data>
+  <data name="TipMetaGroups" xml:space="preserve">
+    <value>Только предметы из отмеченных мета-групп: технический уровень или вид предмета (Tech I, Tech II, фракционные…). Всё отмечено — без фильтра. Применяется при следующем расчёте.</value>
+  </data>
+  <data name="OppsErrNoMetaGroup" xml:space="preserve">
+    <value>Отметьте хотя бы одну мета-группу.</value>
+  </data>
+  <data name="MetaTech1" xml:space="preserve">
+    <value>Tech I</value>
+  </data>
+  <data name="MetaTech2" xml:space="preserve">
+    <value>Tech II</value>
+  </data>
+  <data name="MetaTech3" xml:space="preserve">
+    <value>Tech III</value>
+  </data>
+  <data name="MetaFaction" xml:space="preserve">
+    <value>Фракционные</value>
+  </data>
+  <data name="MetaStoryline" xml:space="preserve">
+    <value>Сюжетные</value>
+  </data>
+  <data name="MetaOfficer" xml:space="preserve">
+    <value>Офицерские</value>
+  </data>
+  <data name="MetaAbyssal" xml:space="preserve">
+    <value>Бездна</value>
+  </data>
+  <data name="MetaLimitedTime" xml:space="preserve">
+    <value>Ограниченные по времени</value>
+  </data>
+  <data name="MetaStructureTech1" xml:space="preserve">
+    <value>Структуры Tech I</value>
+  </data>
+  <data name="MetaStructureTech2" xml:space="preserve">
+    <value>Структуры Tech II</value>
+  </data>
+  <data name="MetaStructureFaction" xml:space="preserve">
+    <value>Фракционные структуры</value>
+  </data>
+  <data name="MetaNone" xml:space="preserve">
+    <value>Нет (материалы, компоненты…)</value>
   </data>
   <data name="ExcludeGroups" xml:space="preserve">
     <value>Исключить группы</value>
@@ -140,7 +218,16 @@
     <value>Прод. 30 д, ед.</value>
   </data>
   <data name="ColIskSold30d" xml:space="preserve">
-    <value>Прод. 30 д, ISK</value>
+    <value>Продажи 30 д</value>
+  </data>
+  <data name="ColAvgPrice30d" xml:space="preserve">
+    <value>Ср. цена 30 д</value>
+  </data>
+  <data name="ColMargin30d" xml:space="preserve">
+    <value>Маржа 30 д</value>
+  </data>
+  <data name="ColProfit30d" xml:space="preserve">
+    <value>Прибыль 30 д</value>
   </data>
   <data name="ScanningForIndustryOpportunities" xml:space="preserve">
     <value>Поиск возможностей производства…</value>

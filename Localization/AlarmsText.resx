@@ -480,6 +480,86 @@
     <value>CORP MINING CHART</value>
     <comment>Scheduler: heading of a message section that posts a chart.</comment>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>Industry Opportunities</value>
+    <comment>Scheduler: heading over an Industry Ops section in the editor.</comment>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>Industry Opportunities</value>
+    <comment>Scheduler: the title a new Industry Ops section starts with, printed bold over its table in the post.</comment>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>MODE</value>
+    <comment>Scheduler, Industry Ops section: label over the build-and-sell mode choice.</comment>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>PRICE AT</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Price at' in this editor's style.</comment>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>MIN 30D ISK VOL</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Min 30d ISK Vol' in this editor's style.</comment>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>MIN 30D UNIT VOL</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Min 30d Unit Vol' in this editor's style.</comment>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>MIN MARGIN %</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Min Margin %' in this editor's style.</comment>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>MIN MARGIN % 30D</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Min Margin % 30d' in this editor's style.</comment>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>EXCLUDE GROUPS</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Exclude Groups' in this editor's style.</comment>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>INCLUDE GROUPS</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Include Groups' in this editor's style.</comment>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>META GROUPS</value>
+    <comment>Scheduler, Industry Ops section: field label, the Industry Ops tool's 'Meta Groups' in this editor's style.</comment>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>Section {0} ({1}) needs at least one meta group ticked.</value>
+    <comment>Scheduler status line on Save. {0} is the section's number, {1} its heading.</comment>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>COLUMNS</value>
+    <comment>Scheduler, Industry Ops section: label over the tick boxes choosing the table's columns.</comment>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>The item is always the first column.</value>
+    <comment>Scheduler, Industry Ops section: note under the column tick boxes.</comment>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>SORT BY</value>
+    <comment>Scheduler, Industry Ops section: label over the column the table is sorted by.</comment>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>Highest first</value>
+    <comment>Scheduler, Industry Ops section: sort direction, descending.</comment>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>Lowest first</value>
+    <comment>Scheduler, Industry Ops section: sort direction, ascending.</comment>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>ROWS</value>
+    <comment>Scheduler, Industry Ops section: label over the box limiting the table to its top N rows.</comment>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>All</value>
+    <comment>Scheduler, Industry Ops section: watermark of the Rows box when empty, meaning every row.</comment>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>Worked out when the post goes out, from the build costs and market prices held then. Everything is set here: the Industry Ops tool's own choices are not used.</value>
+    <comment>Scheduler, Industry Ops section: note at the foot of the section.</comment>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>TEXT</value>
     <comment>Scheduler: heading of a message section of plain text. Also shown lower-cased in "Section {0} ({1}) is empty."</comment>
@@ -555,6 +635,10 @@
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>Corp Mining Chart</value>
     <comment>Scheduler, pick list of message sections to add.</comment>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>Industry Opportunities</value>
+    <comment>Scheduler: a kind of message section, in the Add list: the Industry Ops list.</comment>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>Every so often</value>
@@ -739,6 +823,70 @@
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>Section {0} ({1}) needs a posting.</value>
     <comment>Scheduler status line on Save. {0} is the section's number, {1} its heading in lower case.</comment>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>Section {0} ({1}) needs a market to price at.</value>
+    <comment>Scheduler status line on Save. {0} is the section's number, {1} its heading.</comment>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>Section {0} ({1}): {2} takes a number of 0 or more, or nothing.</value>
+    <comment>Scheduler status line on Save. {0} is the section's number, {1} its heading, {2} the label of the box holding something that is not a number.</comment>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>Export scheduled tasks</value>
+    <comment>Scheduler: title of the save-file dialog for the task export.</comment>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>Import scheduled tasks</value>
+    <comment>Scheduler: title of the open-file dialog for a task import.</comment>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>Saves every task to a JSON file.</value>
+    <comment>Scheduler: tooltip of the Export button.</comment>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>Adds the tasks in a JSON export as new tasks, switched off until you look them over. Nothing here is replaced; a task already here is skipped.</value>
+    <comment>Scheduler: tooltip of the Import button.</comment>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>Tasks exported: {0}.</value>
+    <comment>Scheduler status line after Export. {0} is the number of tasks.</comment>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>Tasks imported: {0}, switched off until you look them over. Already here, skipped: {1}.</value>
+    <comment>Scheduler status line after Import. {0} tasks added, {1} skipped as identical to one already here.</comment>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>That file is not a scheduled tasks export.</value>
+    <comment>Scheduler status line when the chosen file is not a task export.</comment>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>Export alarms</value>
+    <comment>Alarms: title of the save-file dialog for the alarm export.</comment>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>Import alarms</value>
+    <comment>Alarms: title of the open-file dialog for an alarm import.</comment>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>Saves every alarm and its actions to a JSON file.</value>
+    <comment>Alarms: tooltip of the Export button.</comment>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>Adds the alarms in a JSON export as new alarms, actions and all. Nothing here is replaced; an alarm already here is skipped.</value>
+    <comment>Alarms: tooltip of the Import button.</comment>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>Alarms exported: {0}.</value>
+    <comment>Alarms status line after Export. {0} is the number of alarms.</comment>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>Alarms imported: {0}. Already here, skipped: {1}. Checks this version does not have, skipped: {2}.</value>
+    <comment>Alarms status line after Import. {0} added, {1} skipped as identical to one here, {2} skipped because their check type is unknown to this version.</comment>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>That file is not an alarms export.</value>
+    <comment>Alarms status line when the chosen file is not an alarm export.</comment>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>Section {0} ({1}) needs at least one list.</value>
@@ -985,7 +1133,7 @@
     <comment>Alarm editor, Check pick list: the check that wakes you when a ship sits in space too long after an undock or a jump.</comment>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>Wakes you up. Fires in up to three stages when one of your characters in a named hull or ship class undocks and is still sitting in that same system after a number of seconds — a freighter or jump freighter on a tether while its pilot dozes off. Or, ticked for jump arrivals, when a jump-capable hull has landed by jump drive or bridge and is still in space — the thirty seconds after a jump. Docking, leaving the system or logging off ends it. Pressing the dialog's button, or replying anything at all to the agent, quiets it for a while; when that lapses and the ship is still there, the stages start over. Each stage has its own actions — TTS direct or the agent to say the stage's line, a dialog, a sound that repeats until acknowledged. Repeat and cooldown do not apply.</value>
+    <value>Wakes you up. Fires in up to three stages when one of your characters in a named hull or ship class undocks and is still sitting in that same system after a number of seconds — a freighter or jump freighter on a tether while its pilot dozes off. Or, ticked for jump arrivals, when a jump-capable hull has landed by jump drive or bridge and is still in space — the thirty seconds after a jump. Docking, leaving the system or logging off ends it. Pressing the dialog's button, or typing or speaking in the agent chat at all, quiets it for a while; when that lapses and the ship is still there, the stages start over. Typing or speaking there before any stage is due restarts its clock instead. Each stage has its own actions — TTS direct or the agent to say the stage's line, a dialog, a sound that repeats until acknowledged. Repeat and cooldown do not apply.</value>
     <comment>Alarm editor, under the Check pick list when Undocked too long is picked. "TTS direct" is the action that speaks without the agent.</comment>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
@@ -1161,7 +1309,7 @@
     <comment>Alarm editor, Undocked too long check: label of how many minutes an acknowledgement keeps the alarm quiet.</comment>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>How long a reply or the dialog's button keeps this quiet while the ship stays undocked — long enough to wait on a titan bridge. Then the stages start over.</value>
+    <value>How long the dialog's button, or typing or speaking in the agent chat, keeps this quiet while the ship stays undocked — long enough to wait on a titan bridge. Then the stages start over.</value>
     <comment>Alarm editor, Undocked too long check, under Quiet after an acknowledgement.</comment>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">

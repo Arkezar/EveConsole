@@ -61,8 +61,13 @@ public static class UiState
     public const string IndustryOppsMode        = "industryopps.mode";
     public const string IndustryOppsMinIskVol   = "industryopps.min_isk_vol";
     public const string IndustryOppsMinUnitVol  = "industryopps.min_unit_vol";
-    public const string IndustryOppsSkipFaction = "industryopps.skip_faction";
+    public const string IndustryOppsMinMargin   = "industryopps.min_margin";
+    public const string IndustryOppsMinMargin30d = "industryopps.min_margin_30d";
+    public const string IndustryOppsSkipFaction = "industryopps.skip_faction";   // read once, to seed the meta groups
+    public const string IndustryOppsMetaGroups  = "industryopps.meta_groups";
     public const string IndustryOppsBpoOnly     = "industryopps.bpo_only";
+    /// <summary>Industry Ops: only items whose blueprint the user holds (issue #152).</summary>
+    public const string IndustryOppsOwnedOnly   = "industryopps.owned_only";
     /// <summary>"0" when the Worklist is not to rebuild itself every few minutes — this machine's
     /// own, since one screen may be mid-loop while another is not.</summary>
     public const string WorklistAutoRefresh     = "worklist.auto_refresh";

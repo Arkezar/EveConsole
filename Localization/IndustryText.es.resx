@@ -91,14 +91,92 @@
   <data name="Min30dUnitVol" xml:space="preserve">
     <value>Vol. unid. mín. 30 d</value>
   </data>
-  <data name="SkipFaction" xml:space="preserve">
-    <value>Omitir facción</value>
-  </data>
   <data name="SkipNonBpoTraceableItems" xml:space="preserve">
     <value>Omitir objetos sin BPO de origen</value>
   </data>
   <data name="TipOnlyItemsWhoseBlueprint" xml:space="preserve">
     <value>Solo los objetos cuyo plano es un BPO que se puede comprar o se inventa a partir de uno (p. ej., T2 a partir de un BPO T1). Excluye los objetos de facción o de BPC de iteraciones limitadas sin ningún BPO que se pueda obtener, los objetos de historia, de oficial y de espacio muerto, y los objetos de eventos de «Tiempo limitado» cuyo BPO ya no se puede comprar en el juego.</value>
+  </data>
+  <data name="OnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Solo planos que poseo</value>
+  </data>
+  <data name="TipOnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Solo objetos cuyo propio plano, original o copia, tenga uno de tus personajes o una corporación marcada como personal. Se aplica en el próximo cálculo.</value>
+  </data>
+  <data name="MinMarginPct" xml:space="preserve">
+    <value>Margen mín. %</value>
+  </data>
+  <data name="TipMinMargin" xml:space="preserve">
+    <value>Solo objetos cuyo margen (beneficio sobre coste de fabricación, la columna Margen) sea al menos este porcentaje. Se aplica en el próximo cálculo.</value>
+  </data>
+  <data name="OppsErrMinMargin" xml:space="preserve">
+    <value>Introduce un margen mínimo válido en porcentaje (o déjalo en blanco para no filtrar).</value>
+  </data>
+  <data name="IncludeGroups" xml:space="preserve">
+    <value>Incluir grupos</value>
+  </data>
+  <data name="TipIncludeGroups" xml:space="preserve">
+    <value>Si eliges alguno, solo objetos de esos grupos de mercado o de los grupos que cuelgan de ellos. Los grupos excluidos siguen aplicándose dentro. Se aplica en el próximo cálculo.</value>
+  </data>
+  <data name="TipRemoveThisInclusion" xml:space="preserve">
+    <value>Quitar este grupo</value>
+  </data>
+  <data name="MinMargin30dPct" xml:space="preserve">
+    <value>Margen mín. % 30 d</value>
+  </data>
+  <data name="TipMinMargin30d" xml:space="preserve">
+    <value>Solo objetos cuyo margen al precio medio de 30 días (la columna Margen 30 d) sea al menos este porcentaje. Se omiten los objetos que no se vendieron en los últimos 30 días. Se aplica en el próximo cálculo.</value>
+  </data>
+  <data name="OppsErrMinMargin30d" xml:space="preserve">
+    <value>Introduce un margen mínimo de 30 días válido en porcentaje (o déjalo en blanco para no filtrar).</value>
+  </data>
+  <data name="OppsReportHistoryPriced" xml:space="preserve">
+    <value>* Sin órdenes de venta: precio según la media de 30 días.</value>
+  </data>
+  <data name="MetaGroupsLabel" xml:space="preserve">
+    <value>Metagrupos</value>
+  </data>
+  <data name="TipMetaGroups" xml:space="preserve">
+    <value>Solo objetos de los metagrupos marcados: el nivel tecnológico o tipo de objeto (Tech I, Tech II, facción…). Todos marcados es sin filtro. Se aplica en el próximo cálculo.</value>
+  </data>
+  <data name="OppsErrNoMetaGroup" xml:space="preserve">
+    <value>Marca al menos un metagrupo.</value>
+  </data>
+  <data name="MetaTech1" xml:space="preserve">
+    <value>Tech I</value>
+  </data>
+  <data name="MetaTech2" xml:space="preserve">
+    <value>Tech II</value>
+  </data>
+  <data name="MetaTech3" xml:space="preserve">
+    <value>Tech III</value>
+  </data>
+  <data name="MetaFaction" xml:space="preserve">
+    <value>Facción</value>
+  </data>
+  <data name="MetaStoryline" xml:space="preserve">
+    <value>Argumental</value>
+  </data>
+  <data name="MetaOfficer" xml:space="preserve">
+    <value>Oficial</value>
+  </data>
+  <data name="MetaAbyssal" xml:space="preserve">
+    <value>Abisal</value>
+  </data>
+  <data name="MetaLimitedTime" xml:space="preserve">
+    <value>Tiempo limitado</value>
+  </data>
+  <data name="MetaStructureTech1" xml:space="preserve">
+    <value>Estructura Tech I</value>
+  </data>
+  <data name="MetaStructureTech2" xml:space="preserve">
+    <value>Estructura Tech II</value>
+  </data>
+  <data name="MetaStructureFaction" xml:space="preserve">
+    <value>Estructura de facción</value>
+  </data>
+  <data name="MetaNone" xml:space="preserve">
+    <value>Ninguno (materiales, componentes…)</value>
   </data>
   <data name="ExcludeGroups" xml:space="preserve">
     <value>Excluir grupos</value>
@@ -140,7 +218,16 @@
     <value>Unid. vend. 30 d</value>
   </data>
   <data name="ColIskSold30d" xml:space="preserve">
-    <value>ISK vendidos 30 d</value>
+    <value>Ventas 30 d</value>
+  </data>
+  <data name="ColAvgPrice30d" xml:space="preserve">
+    <value>Precio medio 30 d</value>
+  </data>
+  <data name="ColMargin30d" xml:space="preserve">
+    <value>Margen 30 d</value>
+  </data>
+  <data name="ColProfit30d" xml:space="preserve">
+    <value>Beneficio 30 d</value>
   </data>
   <data name="ScanningForIndustryOpportunities" xml:space="preserve">
     <value>Buscando oportunidades de industria…</value>

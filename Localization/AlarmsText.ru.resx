@@ -361,6 +361,66 @@
   <data name="HeadingMiningChart" xml:space="preserve">
     <value>График добычи корпорации</value>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>Возможности производства</value>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>Возможности производства</value>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>Режим</value>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>Цены по</value>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>Мин. объём торгов за 30 д (ISK)</value>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>Мин. объём торгов за 30 д (ед.)</value>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>Мин. маржа %</value>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>Мин. маржа % 30 д</value>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>Исключить группы</value>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>Включить группы</value>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>Мета-группы</value>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>В разделе {0} ({1}) должна быть отмечена хотя бы одна мета-группа.</value>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>Столбцы</value>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>Предмет — всегда первый столбец.</value>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>Сортировать по</value>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>Сначала наибольшие</value>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>Сначала наименьшие</value>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>Строк</value>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>Все</value>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>Рассчитывается при отправке сообщения по стоимости производства и рыночным ценам на тот момент. Всё настраивается здесь: собственные настройки инструмента «Возможности производства» не используются.</value>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>Текст</value>
   </data>
@@ -417,6 +477,9 @@
   </data>
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>График добычи корпорации</value>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>Возможности производства</value>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>С интервалом</value>
@@ -555,6 +618,54 @@
   </data>
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>Для раздела {0} ({1}) нужно объявление.</value>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>Разделу {0} ({1}) нужен рынок для цен.</value>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>Раздел {0} ({1}): в поле «{2}» нужно число от 0 или пусто.</value>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>Экспорт запланированных задач</value>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>Импорт запланированных задач</value>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>Сохраняет все задачи в файл JSON.</value>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>Добавляет задачи из экспорта JSON как новые, выключенными, пока вы их не проверите. Ничего здесь не заменяется; уже существующая задача пропускается.</value>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>Экспортировано задач: {0}.</value>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>Импортировано задач: {0}, они выключены, пока вы их не проверите. Уже есть, пропущено: {1}.</value>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>Этот файл не является экспортом запланированных задач.</value>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>Экспорт тревог</value>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>Импорт тревог</value>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>Сохраняет все тревоги и их действия в файл JSON.</value>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>Добавляет тревоги из экспорта JSON как новые, вместе с действиями. Ничего здесь не заменяется; уже существующая тревога пропускается.</value>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>Экспортировано тревог: {0}.</value>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>Импортировано тревог: {0}. Уже есть, пропущено: {1}. Проверки, которых нет в этой версии, пропущено: {2}.</value>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>Этот файл не является экспортом тревог.</value>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>Для раздела {0} ({1}) нужен хотя бы один список.</value>
@@ -746,7 +857,7 @@
     <value>Слишком долго вне дока (будильник)</value>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>Будит вас. Срабатывает в несколько этапов (до трёх), когда один из ваших персонажей на указанном корпусе или классе корабля выходит из дока и через заданное число секунд всё ещё находится в той же системе — например, пришвартованный фрейтер или джамп-фрейтер, пока пилот задремал. Или, если отмечены прибытия после прыжка, — когда корабль с гипердвигателем прибыл гиперпрыжком или через гипермост и всё ещё в космосе: те самые тридцать секунд после прыжка. Вход в док, уход из системы или выход из игры прекращают её. Нажатие кнопки в окне или любой ответ помощнику на время заглушают тревогу; когда это время истекает, а корабль всё ещё там, этапы начинаются заново. У каждого этапа свои действия — «Озвучка напрямую» или помощник, чтобы произнести фразу этапа, окно, звук, повторяющийся до подтверждения. Повтор и пауза здесь не действуют.</value>
+    <value>Будит вас. Срабатывает в несколько этапов (до трёх), когда один из ваших персонажей на указанном корпусе или классе корабля выходит из дока и через заданное число секунд всё ещё находится в той же системе — например, пришвартованный фрейтер или джамп-фрейтер, пока пилот задремал. Или, если отмечены прибытия после прыжка, — когда корабль с гипердвигателем прибыл гиперпрыжком или через гипермост и всё ещё в космосе: те самые тридцать секунд после прыжка. Вход в док, уход из системы или выход из игры прекращают её. Нажатие кнопки в окне или любой ввод текста или голоса в чате помощника на время заглушают тревогу; когда это время истекает, а корабль всё ещё там, этапы начинаются заново. Ввод там до того, как наступил какой-либо этап, вместо этого перезапускает его отсчёт. У каждого этапа свои действия — «Озвучка напрямую» или помощник, чтобы произнести фразу этапа, окно, звук, повторяющийся до подтверждения. Повтор и пауза здесь не действуют.</value>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
     <value>События заказов магазина</value>
@@ -878,7 +989,7 @@
     <value>Тишина после подтверждения</value>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>Как долго ответ или кнопка в окне заглушают тревогу, пока корабль остаётся вне дока, — достаточно, чтобы дождаться гипермоста титана. Потом этапы начинаются заново.</value>
+    <value>Как долго кнопка в окне или ввод текста или голоса в чате помощника заглушают тревогу, пока корабль остаётся вне дока, — достаточно, чтобы дождаться гипермоста титана. Потом этапы начинаются заново.</value>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">
     <value>мин</value>

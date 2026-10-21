@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:EveConsole.Localization"
              xmlns:vm="clr-namespace:EveConsole.ViewModels"
+             xmlns:views="clr-namespace:EveConsole.Views"
              x:Class="EveConsole.Views.IndustryOpportunitiesView"
              x:DataType="vm:IndustryOpportunitiesViewModel"
              Background="{DynamicResource SurfaceBaseBrush}">
@@ -59,7 +60,9 @@
                 BorderThickness="1"
                 FontSize="12" />
 
-        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+        <!-- ⚠️ Wraps rather than running on under the Calculate button: on a narrower window the
+             checkboxes at the end of one long row went behind it. Each label stays with its box. -->
+        <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="6" VerticalAlignment="Center">
 
           <ComboBox ItemsSource="{Binding ModeOptions}"
                     SelectedItem="{Binding SelectedMode}"
@@ -72,6 +75,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
 
+          <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Text="{x:Static loc:IndustryText.PriceAt}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
                      VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding MarketConfigs}"
@@ -84,23 +88,41 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
+          </StackPanel>
 
+          <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Text="{x:Static loc:IndustryText.Min30dIskVol}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
                      VerticalAlignment="Center" />
           <TextBox Text="{Binding MinIskVolume}" Width="110" FontSize="12"
                    Watermark="{x:Static loc:IndustryText.HintNoFilter}"
                    Background="{DynamicResource SurfacePanelAltBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" Foreground="{DynamicResource TextPrimaryBrush}" />
+          </StackPanel>
 
+          <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Text="{x:Static loc:IndustryText.Min30dUnitVol}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
                      VerticalAlignment="Center" />
           <TextBox Text="{Binding MinUnitVolume}" Width="110" FontSize="12"
                    Watermark="{x:Static loc:IndustryText.HintNoFilter}"
                    Background="{DynamicResource SurfacePanelAltBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" Foreground="{DynamicResource TextPrimaryBrush}" />
+          </StackPanel>
 
-          <CheckBox IsChecked="{Binding SkipFactionItems}"
-                    Content="{x:Static loc:IndustryText.SkipFaction}"
-                    Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11"
-                    VerticalAlignment="Center" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{x:Static loc:IndustryText.MinMarginPct}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
+                     VerticalAlignment="Center" ToolTip.Tip="{x:Static loc:IndustryText.TipMinMargin}" />
+          <TextBox Text="{Binding MinMargin}" Width="80" FontSize="12"
+                   Watermark="{x:Static loc:IndustryText.HintNoFilter}"
+                   ToolTip.Tip="{x:Static loc:IndustryText.TipMinMargin}"
+                   Background="{DynamicResource SurfacePanelAltBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" Foreground="{DynamicResource TextPrimaryBrush}" />
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{x:Static loc:IndustryText.MinMargin30dPct}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
+                     VerticalAlignment="Center" ToolTip.Tip="{x:Static loc:IndustryText.TipMinMargin30d}" />
+          <TextBox Text="{Binding MinMargin30d}" Width="80" FontSize="12"
+                   Watermark="{x:Static loc:IndustryText.HintNoFilter}"
+                   ToolTip.Tip="{x:Static loc:IndustryText.TipMinMargin30d}"
+                   Background="{DynamicResource SurfacePanelAltBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" Foreground="{DynamicResource TextPrimaryBrush}" />
+          </StackPanel>
 
           <CheckBox IsChecked="{Binding BpoOnly}"
                     Content="{x:Static loc:IndustryText.SkipNonBpoTraceableItems}"
@@ -108,7 +130,13 @@
                     VerticalAlignment="Center"
                     ToolTip.Tip="{x:Static loc:IndustryText.TipOnlyItemsWhoseBlueprint}" />
 
-        </StackPanel>
+          <CheckBox IsChecked="{Binding OwnedOnly}"
+                    Content="{x:Static loc:IndustryText.OnlyBlueprintsIOwn}"
+                    Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="{x:Static loc:IndustryText.TipOnlyBlueprintsIOwn}" />
+
+        </WrapPanel>
       </DockPanel>
 
       <!-- ── Excluded market groups ─────────────────────────────────────────── -->
@@ -148,6 +176,64 @@
                 Padding="8 3" FontSize="11"
                 Background="{DynamicResource SurfacePanelAltBrush}" Foreground="{DynamicResource InfoBrush}"
                 BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" />
+      </StackPanel>
+
+      <!-- ── Included market groups: only items in these, when any are chosen ─ -->
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{x:Static loc:IndustryText.IncludeGroups}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
+                   VerticalAlignment="Center" ToolTip.Tip="{x:Static loc:IndustryText.TipIncludeGroups}" />
+
+        <ItemsControl ItemsSource="{Binding IncludedMarketGroups}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:ExcludedMarketGroupVm">
+              <Border Background="{DynamicResource SurfacePanelAltBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1"
+                      CornerRadius="3" Padding="6 3" Margin="0 0 6 4">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <Button x:CompileBindings="False"
+                          Content="✕"
+                          Command="{Binding $parent[UserControl].DataContext.RemoveIncludedGroupCommand}"
+                          CommandParameter="{Binding}"
+                          Background="Transparent" BorderThickness="0"
+                          Foreground="{DynamicResource BadBrush}" FontSize="10" Padding="0"
+                          Cursor="Hand" VerticalAlignment="Center"
+                          ToolTip.Tip="{x:Static loc:IndustryText.TipRemoveThisInclusion}" />
+                  <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button Content="{x:Static loc:IndustryText.AddGroup}"
+                Command="{Binding AddIncludedGroupCommand}"
+                Padding="8 3" FontSize="11"
+                Background="{DynamicResource SurfacePanelAltBrush}" Foreground="{DynamicResource InfoBrush}"
+                BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" />
+      </StackPanel>
+
+      <!-- ── Meta groups: tech level or kind of item; all ticked is no filter ── -->
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{x:Static loc:IndustryText.MetaGroupsLabel}" Foreground="{DynamicResource TextFaintBrush}" FontSize="11"
+                   VerticalAlignment="Center" ToolTip.Tip="{x:Static loc:IndustryText.TipMetaGroups}" />
+        <ItemsControl ItemsSource="{Binding MetaGroups}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CategoryChoice">
+              <CheckBox IsChecked="{Binding Selected}" Content="{Binding Title}"
+                        Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0 0 12 0" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
 
       <!-- ── Name filter: narrows the list as typed, no recalculation ───────── -->
@@ -291,11 +377,44 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
 
+        <DataGridTemplateColumn Header="{x:Static loc:IndustryText.ColAvgPrice30d}" Width="110" SortMemberPath="AvgPrice30d" ClipboardContentBinding="{Binding AvgPrice30dDisplay}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding AvgPrice30dDisplay}"
+                         Foreground="{DynamicResource TextMutedBrush}"
+                         HorizontalAlignment="Right" Padding="0 0 8 0"
+                         VerticalAlignment="Center" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="{x:Static loc:IndustryText.ColMargin30d}" Width="90" SortMemberPath="Margin30d" ClipboardContentBinding="{Binding Margin30dDisplay}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Margin30dDisplay}"
+                         Foreground="{Binding Margin30d, Converter={x:Static views:ProfitColorConverter.Instance}}"
+                         HorizontalAlignment="Right" Padding="0 0 8 0"
+                         VerticalAlignment="Center" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
         <DataGridTemplateColumn Header="{x:Static loc:IndustryText.ColIskSold30d}" Width="110" SortMemberPath="IskVol30d" ClipboardContentBinding="{Binding IskVol30dDisplay}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding IskVol30dDisplay}"
                          Foreground="{DynamicResource TextMutedBrush}"
+                         HorizontalAlignment="Right" Padding="0 0 8 0"
+                         VerticalAlignment="Center" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="{x:Static loc:IndustryText.ColProfit30d}" Width="110" SortMemberPath="Profit30d" ClipboardContentBinding="{Binding Profit30dDisplay}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Profit30dDisplay}"
+                         Foreground="{Binding Profit30d, Converter={x:Static views:ProfitColorConverter.Instance}}"
                          HorizontalAlignment="Right" Padding="0 0 8 0"
                          VerticalAlignment="Center" />
             </DataTemplate>

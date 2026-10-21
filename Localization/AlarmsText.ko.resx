@@ -361,6 +361,66 @@
   <data name="HeadingMiningChart" xml:space="preserve">
     <value>코퍼레이션 채굴 차트</value>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>산업 기회</value>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>산업 기회</value>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>모드</value>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>가격 기준</value>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>최소 30일 ISK 거래액</value>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>최소 30일 거래량</value>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>최소 마진 %</value>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>30일 최소 마진 %</value>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>제외할 그룹</value>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>포함할 그룹</value>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>메타 그룹</value>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>섹션 {0}({1})에는 메타 그룹이 하나 이상 체크되어 있어야 합니다.</value>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>열</value>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>아이템은 항상 첫 번째 열입니다.</value>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>정렬 기준</value>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>높은 순</value>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>낮은 순</value>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>행 수</value>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>전체</value>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>게시물이 전송될 때 그 시점의 제조 비용과 시장 가격으로 계산됩니다. 모든 설정은 여기서 합니다. 산업 기회 도구 자체의 선택은 사용되지 않습니다.</value>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>텍스트</value>
   </data>
@@ -417,6 +477,9 @@
   </data>
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>코퍼레이션 채굴 차트</value>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>산업 기회</value>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>일정 간격마다</value>
@@ -555,6 +618,54 @@
   </data>
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>섹션 {0} ({1})에는 게시물이 필요합니다.</value>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>섹션 {0}({1})에는 가격을 매길 시장이 필요합니다.</value>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>섹션 {0}({1}): {2}에는 0 이상의 숫자를 넣거나 비워 두십시오.</value>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>예약 작업 내보내기</value>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>예약 작업 가져오기</value>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>모든 작업을 JSON 파일로 저장합니다.</value>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>JSON 내보내기의 작업을 새 작업으로 추가하며, 확인할 때까지 꺼진 상태로 둡니다. 기존 항목은 바뀌지 않으며, 이미 있는 작업은 건너뜁니다.</value>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>내보낸 작업: {0}.</value>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>가져온 작업: {0}, 확인할 때까지 꺼져 있습니다. 이미 있어 건너뜀: {1}.</value>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>이 파일은 예약 작업 내보내기 파일이 아닙니다.</value>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>알람 내보내기</value>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>알람 가져오기</value>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>모든 알람과 그 동작을 JSON 파일로 저장합니다.</value>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>JSON 내보내기의 알람을 동작까지 포함해 새 알람으로 추가합니다. 기존 항목은 바뀌지 않으며, 이미 있는 알람은 건너뜁니다.</value>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>내보낸 알람: {0}.</value>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>가져온 알람: {0}. 이미 있어 건너뜀: {1}. 이 버전에 없는 검사라 건너뜀: {2}.</value>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>이 파일은 알람 내보내기 파일이 아닙니다.</value>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>섹션 {0} ({1})에는 목록이 하나 이상 필요합니다.</value>
@@ -737,7 +848,7 @@
     <value>장시간 도킹 해제 (깨우기 알림)</value>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>잠든 사용자를 깨웁니다. 지정한 선체나 함급에 탄 내 캐릭터 중 하나가 도킹 해제한 뒤 지정한 시간(초)이 지나도 같은 항성계에 그대로 있으면 최대 3단계로 발생합니다 — 파일럿이 조는 사이 테더링 중인 프레이터나 점프 프레이터 같은 경우입니다. 또는 점프 도착 기준을 선택하면, 점프 가능한 선체가 점프 드라이브나 브릿지로 도착한 뒤 계속 우주에 있을 때 발생합니다 — 점프 직후의 30초가 그런 경우입니다. 도킹하거나, 항성계를 떠나거나, 로그아웃하면 끝납니다. 대화 상자의 버튼을 누르거나 AI 도우미에게 무엇이든 답하면 한동안 조용해지며, 그 시간이 지나도 함선이 그대로 있으면 단계가 처음부터 다시 시작됩니다. 단계마다 고유한 동작이 있습니다 — 단계의 문구를 말하는 TTS 직접 또는 AI 도우미, 대화 상자, 확인할 때까지 반복되는 사운드. 반복과 쿨다운은 적용되지 않습니다.</value>
+    <value>잠든 사용자를 깨웁니다. 지정한 선체나 함급에 탄 내 캐릭터 중 하나가 도킹 해제한 뒤 지정한 시간(초)이 지나도 같은 항성계에 그대로 있으면 최대 3단계로 발생합니다 — 파일럿이 조는 사이 테더링 중인 프레이터나 점프 프레이터 같은 경우입니다. 또는 점프 도착 기준을 선택하면, 점프 가능한 선체가 점프 드라이브나 브릿지로 도착한 뒤 계속 우주에 있을 때 발생합니다 — 점프 직후의 30초가 그런 경우입니다. 도킹하거나, 항성계를 떠나거나, 로그아웃하면 끝납니다. 대화 상자의 버튼을 누르거나 AI 도우미 채팅에서 무엇이든 입력하거나 말하면 한동안 조용해지며, 그 시간이 지나도 함선이 그대로 있으면 단계가 처음부터 다시 시작됩니다. 아직 어떤 단계도 되기 전에 그곳에서 입력하거나 말하면 대신 타이머가 다시 시작됩니다. 단계마다 고유한 동작이 있습니다 — 단계의 문구를 말하는 TTS 직접 또는 AI 도우미, 대화 상자, 확인할 때까지 반복되는 사운드. 반복과 쿨다운은 적용되지 않습니다.</value>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
     <value>상점 주문 이벤트</value>
@@ -869,7 +980,7 @@
     <value>확인 후 조용히 할 시간</value>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>함선이 도킹 해제 상태로 있는 동안, 답변하거나 대화 상자 버튼을 누른 뒤 이 알람이 조용히 있는 시간입니다 — 타이탄 브릿지를 기다릴 수 있을 만큼 길게 두십시오. 그 후 단계가 처음부터 다시 시작됩니다.</value>
+    <value>함선이 도킹 해제 상태로 있는 동안, 대화 상자 버튼을 누르거나 AI 도우미 채팅에서 입력하거나 말한 뒤 이 알람이 조용히 있는 시간입니다 — 타이탄 브릿지를 기다릴 수 있을 만큼 길게 두십시오. 그 후 단계가 처음부터 다시 시작됩니다.</value>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">
     <value>분</value>

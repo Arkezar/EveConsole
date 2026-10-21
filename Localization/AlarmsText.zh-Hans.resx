@@ -361,6 +361,66 @@
   <data name="HeadingMiningChart" xml:space="preserve">
     <value>军团采矿图表</value>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>工业机会</value>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>工业机会</value>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>价格取自</value>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>30 天 ISK 成交额下限</value>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>30 天成交量下限</value>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>最低利润率 %</value>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>30 天最低利润率 %</value>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>排除分组</value>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>包含分组</value>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>元组</value>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>第 {0} 部分（{1}）需要至少勾选一个元组。</value>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>物品始终是第一列。</value>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>排序依据</value>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>从高到低</value>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>从低到高</value>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>行数</value>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>在发帖时根据当时的制造成本和市场价格计算。所有设置都在这里完成：不使用工业机会工具自己的选择。</value>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>文本</value>
   </data>
@@ -417,6 +477,9 @@
   </data>
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>军团采矿图表</value>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>工业机会</value>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>每隔一段时间</value>
@@ -555,6 +618,54 @@
   </data>
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>第 {0} 个区块（{1}）需要选择销售发布。</value>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>第 {0} 部分（{1}）需要一个定价市场。</value>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>第 {0} 部分（{1}）：{2} 需要填写 0 或以上的数字，或留空。</value>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>导出计划任务</value>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>导入计划任务</value>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>将所有任务保存到 JSON 文件。</value>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>将 JSON 导出文件中的任务添加为新任务，在你检查之前保持关闭。不会替换这里已有的内容；已存在的任务会被跳过。</value>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>已导出任务：{0}。</value>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>已导入任务：{0}，在你检查之前保持关闭。已存在而跳过：{1}。</value>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>该文件不是计划任务的导出文件。</value>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>导出警报</value>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>导入警报</value>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>将所有警报及其动作保存到 JSON 文件。</value>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>将 JSON 导出文件中的警报（连同其动作）添加为新警报。不会替换这里已有的内容；已存在的警报会被跳过。</value>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>已导出警报：{0}。</value>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>已导入警报：{0}。已存在而跳过：{1}。此版本没有的检查类型，跳过：{2}。</value>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>该文件不是警报的导出文件。</value>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>第 {0} 个区块（{1}）至少需要一个榜单。</value>
@@ -737,7 +848,7 @@
     <value>出站过久（叫醒服务）</value>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>用来叫醒你。当你的某个角色驾驶指定的船体或舰船类别出站，并在若干秒后仍停留在同一星系时，最多分三个阶段触发——比如货舰或战略货舰处于系留状态，驾驶员却打起了瞌睡。或者，在勾选“跳跃抵达”时，当可跳跃的船体通过跳跃引擎或跳桥抵达、且仍在太空中时触发——也就是跳跃后的那三十秒。进站、离开该星系或下线都会使其结束。点击对话框中的按钮，或对 AI 助手做出任何回复，都会让它暂时安静下来；静默期结束后如果舰船仍在原处，各阶段将重新开始。每个阶段都有自己的操作——通过“TTS 直接朗读”或 AI 助手说出该阶段的台词、弹出对话框、播放一直重复直到被确认的声音。重复和冷却时间设置不适用。</value>
+    <value>用来叫醒你。当你的某个角色驾驶指定的船体或舰船类别出站，并在若干秒后仍停留在同一星系时，最多分三个阶段触发——比如货舰或战略货舰处于系留状态，驾驶员却打起了瞌睡。或者，在勾选“跳跃抵达”时，当可跳跃的船体通过跳跃引擎或跳桥抵达、且仍在太空中时触发——也就是跳跃后的那三十秒。进站、离开该星系或下线都会使其结束。点击对话框中的按钮，或在 AI 助手聊天中输入或说出任何内容，都会让它暂时安静下来；静默期结束后如果舰船仍在原处，各阶段将重新开始。若在任何阶段到来之前在那里输入或说话，则改为重新开始计时。每个阶段都有自己的操作——通过“TTS 直接朗读”或 AI 助手说出该阶段的台词、弹出对话框、播放一直重复直到被确认的声音。重复和冷却时间设置不适用。</value>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
     <value>商店订单事件</value>
@@ -869,7 +980,7 @@
     <value>确认后静默</value>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>舰船仍在站外时，一次回复或点击对话框按钮能让此警报安静多久——应足以等待泰坦开桥。之后各阶段将重新开始。</value>
+    <value>舰船仍在站外时，点击对话框按钮，或在 AI 助手聊天中输入或说话，能让此警报安静多久——应足以等待泰坦开桥。之后各阶段将重新开始。</value>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">
     <value>分钟</value>

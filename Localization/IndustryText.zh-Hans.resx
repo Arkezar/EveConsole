@@ -91,14 +91,92 @@
   <data name="Min30dUnitVol" xml:space="preserve">
     <value>30 天成交量下限</value>
   </data>
-  <data name="SkipFaction" xml:space="preserve">
-    <value>跳过势力物品</value>
-  </data>
   <data name="SkipNonBpoTraceableItems" xml:space="preserve">
     <value>跳过无法追溯到 BPO 的物品</value>
   </data>
   <data name="TipOnlyItemsWhoseBlueprint" xml:space="preserve">
     <value>只保留蓝图为可购买的蓝图原件、或由其发明而来的物品（例如由 T1 蓝图原件发明的 T2）。排除无法获得蓝图原件的势力 / 限量流程蓝图拷贝物品、故事线、官员和死亡空间物品，以及蓝图原件已无法在游戏中购买的“限时”活动物品。</value>
+  </data>
+  <data name="OnlyBlueprintsIOwn" xml:space="preserve">
+    <value>仅限我拥有的蓝图</value>
+  </data>
+  <data name="TipOnlyBlueprintsIOwn" xml:space="preserve">
+    <value>仅显示其蓝图（原件或拷贝）由你的某个角色或标记为个人的军团持有的物品。下次计算时生效。</value>
+  </data>
+  <data name="MinMarginPct" xml:space="preserve">
+    <value>最低利润率 %</value>
+  </data>
+  <data name="TipMinMargin" xml:space="preserve">
+    <value>仅显示利润率（利润除以制造成本，即利润率一栏）不低于此百分比的物品。下次计算时生效。</value>
+  </data>
+  <data name="OppsErrMinMargin" xml:space="preserve">
+    <value>请输入有效的最低利润率百分比（留空则不筛选）。</value>
+  </data>
+  <data name="IncludeGroups" xml:space="preserve">
+    <value>包含分组</value>
+  </data>
+  <data name="TipIncludeGroups" xml:space="preserve">
+    <value>选择后，仅显示这些市场分组及其子分组中的物品。排除分组在其中仍然生效。下次计算时生效。</value>
+  </data>
+  <data name="TipRemoveThisInclusion" xml:space="preserve">
+    <value>移除此分组</value>
+  </data>
+  <data name="MinMargin30dPct" xml:space="preserve">
+    <value>30 天最低利润率 %</value>
+  </data>
+  <data name="TipMinMargin30d" xml:space="preserve">
+    <value>仅显示按 30 天均价计算的利润率（即 30 天利润率一栏）不低于此百分比的物品。过去 30 天未售出的物品不显示。下次计算时生效。</value>
+  </data>
+  <data name="OppsErrMinMargin30d" xml:space="preserve">
+    <value>请输入有效的 30 天最低利润率百分比（留空则不筛选）。</value>
+  </data>
+  <data name="OppsReportHistoryPriced" xml:space="preserve">
+    <value>* 没有卖单：按 30 天均价定价。</value>
+  </data>
+  <data name="MetaGroupsLabel" xml:space="preserve">
+    <value>元组</value>
+  </data>
+  <data name="TipMetaGroups" xml:space="preserve">
+    <value>仅显示勾选元组中的物品：即科技等级或物品类别（一级科技、二级科技、势力……）。全部勾选即不筛选。下次计算时生效。</value>
+  </data>
+  <data name="OppsErrNoMetaGroup" xml:space="preserve">
+    <value>请至少勾选一个元组。</value>
+  </data>
+  <data name="MetaTech1" xml:space="preserve">
+    <value>一级科技</value>
+  </data>
+  <data name="MetaTech2" xml:space="preserve">
+    <value>二级科技</value>
+  </data>
+  <data name="MetaTech3" xml:space="preserve">
+    <value>三级科技</value>
+  </data>
+  <data name="MetaFaction" xml:space="preserve">
+    <value>势力</value>
+  </data>
+  <data name="MetaStoryline" xml:space="preserve">
+    <value>故事线</value>
+  </data>
+  <data name="MetaOfficer" xml:space="preserve">
+    <value>官员</value>
+  </data>
+  <data name="MetaAbyssal" xml:space="preserve">
+    <value>深渊</value>
+  </data>
+  <data name="MetaLimitedTime" xml:space="preserve">
+    <value>限时</value>
+  </data>
+  <data name="MetaStructureTech1" xml:space="preserve">
+    <value>建筑一级科技</value>
+  </data>
+  <data name="MetaStructureTech2" xml:space="preserve">
+    <value>建筑二级科技</value>
+  </data>
+  <data name="MetaStructureFaction" xml:space="preserve">
+    <value>建筑势力</value>
+  </data>
+  <data name="MetaNone" xml:space="preserve">
+    <value>无（材料、组件等）</value>
   </data>
   <data name="ExcludeGroups" xml:space="preserve">
     <value>排除分组</value>
@@ -140,7 +218,16 @@
     <value>30 天销量</value>
   </data>
   <data name="ColIskSold30d" xml:space="preserve">
-    <value>30 天 ISK 销售额</value>
+    <value>30 天销售额</value>
+  </data>
+  <data name="ColAvgPrice30d" xml:space="preserve">
+    <value>30 天均价</value>
+  </data>
+  <data name="ColMargin30d" xml:space="preserve">
+    <value>30 天利润率</value>
+  </data>
+  <data name="ColProfit30d" xml:space="preserve">
+    <value>30 天利润</value>
   </data>
   <data name="ScanningForIndustryOpportunities" xml:space="preserve">
     <value>正在扫描工业机会…</value>

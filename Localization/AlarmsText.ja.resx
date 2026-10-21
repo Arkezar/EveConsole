@@ -361,6 +361,66 @@
   <data name="HeadingMiningChart" xml:space="preserve">
     <value>コーポの採掘グラフ</value>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>生産チャンス</value>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>生産チャンス</value>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>モード</value>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>価格の取得先</value>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>30日間の最低取引額</value>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>30日間の最低取引数量</value>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>最低利益率 %</value>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>30日間の最低利益率 %</value>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>除外するグループ</value>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>含めるグループ</value>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>メタグループ</value>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>セクション {0}（{1}）では少なくとも 1 つのメタグループをチェックする必要があります。</value>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>アイテムは常に最初の列です。</value>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>並べ替え</value>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>大きい順</value>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>小さい順</value>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>行数</value>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>すべて</value>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>投稿の送信時に、その時点の製造コストと市場価格から計算されます。設定はすべてここで行います。生産チャンスツール自体の選択は使われません。</value>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>テキスト</value>
   </data>
@@ -417,6 +477,9 @@
   </data>
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>コーポの採掘グラフ</value>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>生産チャンス</value>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>一定間隔</value>
@@ -555,6 +618,54 @@
   </data>
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>セクション{0}（{1}）では投稿を選択する必要があります。</value>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>セクション {0}（{1}）には価格を付ける市場が必要です。</value>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>セクション {0}（{1}）：{2} には 0 以上の数値を入力するか、空欄にしてください。</value>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>予定タスクをエクスポート</value>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>予定タスクをインポート</value>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>すべてのタスクを JSON ファイルに保存します。</value>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>JSON エクスポートのタスクを新しいタスクとして追加します。確認するまでオフのままです。既存のものは置き換えられず、すでにあるタスクはスキップされます。</value>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>エクスポートしたタスク：{0}。</value>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>インポートしたタスク：{0}（確認するまでオフ）。既存のためスキップ：{1}。</value>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>このファイルは予定タスクのエクスポートではありません。</value>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>アラームをエクスポート</value>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>アラームをインポート</value>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>すべてのアラームとそのアクションを JSON ファイルに保存します。</value>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>JSON エクスポートのアラームをアクションごと新しいアラームとして追加します。既存のものは置き換えられず、すでにあるアラームはスキップされます。</value>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>エクスポートしたアラーム：{0}。</value>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>インポートしたアラーム：{0}。既存のためスキップ：{1}。このバージョンにないチェックのためスキップ：{2}。</value>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>このファイルはアラームのエクスポートではありません。</value>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>セクション{0}（{1}）ではリストを1つ以上選択する必要があります。</value>
@@ -737,7 +848,7 @@
     <value>出港状態が長すぎる（目覚まし）</value>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>あなたを起こします。指定した船体または艦船クラスに乗った自分のキャラクターが出港し、一定の秒数が経っても同じシステムにとどまっているときに、最大3段階で発動します — たとえば、パイロットが居眠りしている間にテザリング中の超大型輸送艦やジャンプドライブ搭載型輸送艦です。または「ジャンプでの到着」にチェックを入れると、ジャンプ可能な船体がジャンプドライブやブリッジで到着し、まだ宇宙空間にいるときに発動します — ジャンプ直後の30秒間です。入港、システムからの移動、ログオフで終了します。ダイアログのボタンを押すか、AIアシスタントに何か返信すると、しばらく静かになります。その時間が過ぎても艦船がまだそこにいる場合、ステージは最初からやり直しになります。各ステージには独自のアクションがあります — 「TTSで直接読み上げ」またはAIアシスタントによるステージの文の読み上げ、ダイアログ、確認するまで繰り返すサウンド。繰り返しとクールダウンは適用されません。</value>
+    <value>あなたを起こします。指定した船体または艦船クラスに乗った自分のキャラクターが出港し、一定の秒数が経っても同じシステムにとどまっているときに、最大3段階で発動します — たとえば、パイロットが居眠りしている間にテザリング中の超大型輸送艦やジャンプドライブ搭載型輸送艦です。または「ジャンプでの到着」にチェックを入れると、ジャンプ可能な船体がジャンプドライブやブリッジで到着し、まだ宇宙空間にいるときに発動します — ジャンプ直後の30秒間です。入港、システムからの移動、ログオフで終了します。ダイアログのボタンを押すか、AIアシスタントのチャットで何か入力するか話すと、しばらく静かになります。その時間が過ぎても艦船がまだそこにいる場合、ステージは最初からやり直しになります。どのステージにもまだ達していないうちにそこで入力するか話すと、代わりにタイマーが最初からやり直しになります。各ステージには独自のアクションがあります — 「TTSで直接読み上げ」またはAIアシスタントによるステージの文の読み上げ、ダイアログ、確認するまで繰り返すサウンド。繰り返しとクールダウンは適用されません。</value>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
     <value>ストアの注文イベント</value>
@@ -869,7 +980,7 @@
     <value>確認後の休止時間</value>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>艦船が出港したままの間、返信やダイアログのボタンでこのアラームを静かにしておく時間です — タイタンのブリッジを待てる程度の長さにしてください。その後、ステージは最初からやり直しになります。</value>
+    <value>艦船が出港したままの間、ダイアログのボタン、またはAIアシスタントのチャットでの入力や発話でこのアラームを静かにしておく時間です — タイタンのブリッジを待てる程度の長さにしてください。その後、ステージは最初からやり直しになります。</value>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">
     <value>分</value>

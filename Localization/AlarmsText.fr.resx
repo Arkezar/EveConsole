@@ -361,6 +361,66 @@
   <data name="HeadingMiningChart" xml:space="preserve">
     <value>Graphique d'extraction minière de la corporation</value>
   </data>
+  <data name="HeadingIndustryOpps" xml:space="preserve">
+    <value>Opportunités industrielles</value>
+  </data>
+  <data name="OppsDefaultTitle" xml:space="preserve">
+    <value>Opportunités industrielles</value>
+  </data>
+  <data name="OppsModeLabel" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="OppsPriceAtLabel" xml:space="preserve">
+    <value>Prix à</value>
+  </data>
+  <data name="OppsMinIskVolLabel" xml:space="preserve">
+    <value>Vol. ISK min. 30 j</value>
+  </data>
+  <data name="OppsMinUnitVolLabel" xml:space="preserve">
+    <value>Vol. unités min. 30 j</value>
+  </data>
+  <data name="OppsMinMarginLabel" xml:space="preserve">
+    <value>Marge min. %</value>
+  </data>
+  <data name="OppsMinMargin30dLabel" xml:space="preserve">
+    <value>Marge min. % 30 j</value>
+  </data>
+  <data name="OppsExcludeGroupsLabel" xml:space="preserve">
+    <value>Exclure des groupes</value>
+  </data>
+  <data name="OppsIncludeGroupsLabel" xml:space="preserve">
+    <value>Inclure des groupes</value>
+  </data>
+  <data name="OppsMetaGroupsLabel" xml:space="preserve">
+    <value>Méta-groupes</value>
+  </data>
+  <data name="SectionNeedsMetaGroup" xml:space="preserve">
+    <value>La section {0} ({1}) a besoin d'au moins un méta-groupe coché.</value>
+  </data>
+  <data name="ColumnsLabel" xml:space="preserve">
+    <value>Colonnes</value>
+  </data>
+  <data name="OppsItemAlwaysNote" xml:space="preserve">
+    <value>L'objet est toujours la première colonne.</value>
+  </data>
+  <data name="SortByLabel" xml:space="preserve">
+    <value>Trier par</value>
+  </data>
+  <data name="SortHighestFirst" xml:space="preserve">
+    <value>Du plus grand au plus petit</value>
+  </data>
+  <data name="SortLowestFirst" xml:space="preserve">
+    <value>Du plus petit au plus grand</value>
+  </data>
+  <data name="RowLimitLabel" xml:space="preserve">
+    <value>Lignes</value>
+  </data>
+  <data name="HintAllRows" xml:space="preserve">
+    <value>Toutes</value>
+  </data>
+  <data name="OppsSectionNote" xml:space="preserve">
+    <value>Calculé à l'envoi de la publication, à partir des coûts de fabrication et des prix du marché disponibles à ce moment-là. Tout se règle ici : les choix propres à l'outil Opportunités industrielles ne sont pas utilisés.</value>
+  </data>
   <data name="HeadingText" xml:space="preserve">
     <value>Texte</value>
   </data>
@@ -417,6 +477,9 @@
   </data>
   <data name="SectionTypeMiningChart" xml:space="preserve">
     <value>Graphique d'extraction minière de la corporation</value>
+  </data>
+  <data name="SectionTypeIndustryOpps" xml:space="preserve">
+    <value>Opportunités industrielles</value>
   </data>
   <data name="KindInterval" xml:space="preserve">
     <value>À intervalles réguliers</value>
@@ -555,6 +618,54 @@
   </data>
   <data name="SectionNeedsPosting" xml:space="preserve">
     <value>La section {0} ({1}) nécessite une annonce.</value>
+  </data>
+  <data name="SectionNeedsMarket" xml:space="preserve">
+    <value>La section {0} ({1}) a besoin d'un marché où établir les prix.</value>
+  </data>
+  <data name="SectionBadNumber" xml:space="preserve">
+    <value>Section {0} ({1}) : {2} accepte un nombre supérieur ou égal à 0, ou rien.</value>
+  </data>
+  <data name="TitleExportTasks" xml:space="preserve">
+    <value>Exporter les tâches planifiées</value>
+  </data>
+  <data name="TitleImportTasks" xml:space="preserve">
+    <value>Importer des tâches planifiées</value>
+  </data>
+  <data name="TipExportTasks" xml:space="preserve">
+    <value>Enregistre toutes les tâches dans un fichier JSON.</value>
+  </data>
+  <data name="TipImportTasks" xml:space="preserve">
+    <value>Ajoute les tâches d'un export JSON comme nouvelles tâches, désactivées jusqu'à ce que vous les ayez vérifiées. Rien n'est remplacé ; une tâche déjà présente est ignorée.</value>
+  </data>
+  <data name="StatusTasksExported" xml:space="preserve">
+    <value>Tâches exportées : {0}.</value>
+  </data>
+  <data name="StatusTasksImported" xml:space="preserve">
+    <value>Tâches importées : {0}, désactivées jusqu'à ce que vous les ayez vérifiées. Déjà présentes, ignorées : {1}.</value>
+  </data>
+  <data name="ErrNotATasksExport" xml:space="preserve">
+    <value>Ce fichier n'est pas un export de tâches planifiées.</value>
+  </data>
+  <data name="TitleExportAlarms" xml:space="preserve">
+    <value>Exporter les alarmes</value>
+  </data>
+  <data name="TitleImportAlarms" xml:space="preserve">
+    <value>Importer des alarmes</value>
+  </data>
+  <data name="TipExportAlarms" xml:space="preserve">
+    <value>Enregistre toutes les alarmes et leurs actions dans un fichier JSON.</value>
+  </data>
+  <data name="TipImportAlarms" xml:space="preserve">
+    <value>Ajoute les alarmes d'un export JSON comme nouvelles alarmes, avec leurs actions. Rien n'est remplacé ; une alarme déjà présente est ignorée.</value>
+  </data>
+  <data name="StatusAlarmsExported" xml:space="preserve">
+    <value>Alarmes exportées : {0}.</value>
+  </data>
+  <data name="StatusAlarmsImported" xml:space="preserve">
+    <value>Alarmes importées : {0}. Déjà présentes, ignorées : {1}. Vérifications que cette version ne connaît pas, ignorées : {2}.</value>
+  </data>
+  <data name="ErrNotAnAlarmsExport" xml:space="preserve">
+    <value>Ce fichier n'est pas un export d'alarmes.</value>
   </data>
   <data name="SectionNeedsList" xml:space="preserve">
     <value>La section {0} ({1}) nécessite au moins une liste.</value>
@@ -740,7 +851,7 @@
     <value>Trop longtemps dans l'espace (réveil)</value>
   </data>
   <data name="CheckUndockedTooLongNote" xml:space="preserve">
-    <value>Vous réveille. Se déclenche en trois étapes au plus quand l'un de vos personnages, dans une coque ou une classe de vaisseau indiquée, appareille et se trouve toujours dans le même système après un certain nombre de secondes — un transport de fret ou un transport de fret hyperspatial arrimé pendant que son pilote s'assoupit. Ou, si les arrivées par saut sont cochées, quand une coque capable de sauter est arrivée par propulseur hyperspatial ou par pont et se trouve toujours dans l'espace — les trente secondes qui suivent un saut. S'amarrer, quitter le système ou se déconnecter y met fin. Appuyer sur le bouton de la boîte de dialogue, ou répondre quoi que ce soit à l'assistant, la fait taire un moment ; quand ce délai expire et que le vaisseau est toujours là, les étapes recommencent. Chaque étape a ses propres actions — TTS direct ou l'assistant pour prononcer la phrase de l'étape, une boîte de dialogue, un son qui se répète jusqu'à l'acquittement. La répétition et le délai de réarmement ne s'appliquent pas.</value>
+    <value>Vous réveille. Se déclenche en trois étapes au plus quand l'un de vos personnages, dans une coque ou une classe de vaisseau indiquée, appareille et se trouve toujours dans le même système après un certain nombre de secondes — un transport de fret ou un transport de fret hyperspatial arrimé pendant que son pilote s'assoupit. Ou, si les arrivées par saut sont cochées, quand une coque capable de sauter est arrivée par propulseur hyperspatial ou par pont et se trouve toujours dans l'espace — les trente secondes qui suivent un saut. S'amarrer, quitter le système ou se déconnecter y met fin. Appuyer sur le bouton de la boîte de dialogue, ou écrire ou parler dans le chat de l'assistant, la fait taire un moment ; quand ce délai expire et que le vaisseau est toujours là, les étapes recommencent. Écrire ou parler là avant qu'une étape soit due relance plutôt son chronomètre. Chaque étape a ses propres actions — TTS direct ou l'assistant pour prononcer la phrase de l'étape, une boîte de dialogue, un son qui se répète jusqu'à l'acquittement. La répétition et le délai de réarmement ne s'appliquent pas.</value>
   </data>
   <data name="CheckStoreOrder" xml:space="preserve">
     <value>Événements des commandes de boutique</value>
@@ -872,7 +983,7 @@
     <value>Silence après un acquittement</value>
   </data>
   <data name="AdriftSnoozeNote" xml:space="preserve">
-    <value>Durée pendant laquelle une réponse ou le bouton de la boîte de dialogue fait taire l'alarme tant que le vaisseau reste dans l'espace — assez longtemps pour attendre un pont de titan. Ensuite, les étapes recommencent.</value>
+    <value>Durée pendant laquelle le bouton de la boîte de dialogue, ou écrire ou parler dans le chat de l'assistant, fait taire l'alarme tant que le vaisseau reste dans l'espace — assez longtemps pour attendre un pont de titan. Ensuite, les étapes recommencent.</value>
   </data>
   <data name="SuffixMinutes" xml:space="preserve">
     <value>minutes</value>

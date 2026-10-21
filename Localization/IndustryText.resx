@@ -120,10 +120,6 @@
     <value>Min 30d Unit Vol</value>
     <comment>Text in IndustryOpportunitiesView.</comment>
   </data>
-  <data name="SkipFaction" xml:space="preserve">
-    <value>Skip faction</value>
-    <comment>Button or option in IndustryOpportunitiesView.</comment>
-  </data>
   <data name="SkipNonBpoTraceableItems" xml:space="preserve">
     <value>Skip Non BPO traceable Items</value>
     <comment>Button or option in IndustryOpportunitiesView.</comment>
@@ -131,6 +127,114 @@
   <data name="TipOnlyItemsWhoseBlueprint" xml:space="preserve">
     <value>Only items whose blueprint is a buyable BPO, or is invented from one (e.g. T2 from a T1 BPO). Excludes faction/limited-run BPC items with no obtainable BPO, storyline, officer and deadspace items, and 'Limited Time' event items whose BPO can no longer be bought in game.</value>
     <comment>Tooltip in IndustryOpportunitiesView.</comment>
+  </data>
+  <data name="OnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Only blueprints I own</value>
+    <comment>Industry Ops filter checkbox: keep only items whose blueprint (original or copy) the user holds.</comment>
+  </data>
+  <data name="TipOnlyBlueprintsIOwn" xml:space="preserve">
+    <value>Only items whose own blueprint, an original or a copy, is held by one of your characters or a corporation marked personal. Applies at the next Calculate.</value>
+    <comment>Tooltip of that checkbox.</comment>
+  </data>
+  <data name="MinMarginPct" xml:space="preserve">
+    <value>Min Margin %</value>
+    <comment>Industry Ops filter label: the lowest margin kept, in percent.</comment>
+  </data>
+  <data name="TipMinMargin" xml:space="preserve">
+    <value>Only items whose margin (profit over build cost, the Margin column) is at least this many percent. Applies at the next Calculate.</value>
+    <comment>Tooltip of the Min Margin % box.</comment>
+  </data>
+  <data name="OppsErrMinMargin" xml:space="preserve">
+    <value>Please enter a valid minimum margin in percent (or leave blank for no filter).</value>
+    <comment>Industry Ops status line when the Min Margin % box holds something that is not a number of 0 or more.</comment>
+  </data>
+  <data name="IncludeGroups" xml:space="preserve">
+    <value>Include Groups</value>
+    <comment>Industry Ops: label of the list of market groups an item must be in (beside Exclude Groups).</comment>
+  </data>
+  <data name="TipIncludeGroups" xml:space="preserve">
+    <value>When any are chosen, only items in these market groups or the groups under them. Exclude Groups still apply inside them. Applies at the next Calculate.</value>
+    <comment>Tooltip of the Include Groups label.</comment>
+  </data>
+  <data name="TipRemoveThisInclusion" xml:space="preserve">
+    <value>Remove this group</value>
+    <comment>Tooltip of the ✕ on an included group.</comment>
+  </data>
+  <data name="MinMargin30dPct" xml:space="preserve">
+    <value>Min Margin % 30d</value>
+    <comment>Industry Ops filter label: the lowest margin at the 30-day average price kept, in percent.</comment>
+  </data>
+  <data name="TipMinMargin30d" xml:space="preserve">
+    <value>Only items whose margin at the 30-day average price (the Margin 30d column) is at least this many percent. Items that did not sell in the last 30 days are left out. Applies at the next Calculate.</value>
+    <comment>Tooltip of the Min Margin % 30d box.</comment>
+  </data>
+  <data name="OppsErrMinMargin30d" xml:space="preserve">
+    <value>Please enter a valid minimum 30-day margin in percent (or leave blank for no filter).</value>
+    <comment>Industry Ops status line when the Min Margin % 30d box holds something that is not a number of 0 or more.</comment>
+  </data>
+  <data name="OppsReportHistoryPriced" xml:space="preserve">
+    <value>* No sell orders: priced at the 30-day average.</value>
+    <comment>Scheduled post: note under an Industry Ops table when a sell price is marked * (from 30-day history).</comment>
+  </data>
+  <data name="MetaGroupsLabel" xml:space="preserve">
+    <value>Meta Groups</value>
+    <comment>Industry Ops filter label: the row of meta group tick boxes.</comment>
+  </data>
+  <data name="TipMetaGroups" xml:space="preserve">
+    <value>Only items in the ticked meta groups: the tech level or kind of item (Tech I, Tech II, Faction…). All ticked is no filter. Applies at the next Calculate.</value>
+    <comment>Tooltip of the Meta Groups label.</comment>
+  </data>
+  <data name="OppsErrNoMetaGroup" xml:space="preserve">
+    <value>Tick at least one meta group.</value>
+    <comment>Industry Ops status line when every meta group box is unticked.</comment>
+  </data>
+  <data name="MetaTech1" xml:space="preserve">
+    <value>Tech I</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Tech I.</comment>
+  </data>
+  <data name="MetaTech2" xml:space="preserve">
+    <value>Tech II</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Tech II.</comment>
+  </data>
+  <data name="MetaTech3" xml:space="preserve">
+    <value>Tech III</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Tech III.</comment>
+  </data>
+  <data name="MetaFaction" xml:space="preserve">
+    <value>Faction</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Faction.</comment>
+  </data>
+  <data name="MetaStoryline" xml:space="preserve">
+    <value>Storyline</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Storyline.</comment>
+  </data>
+  <data name="MetaOfficer" xml:space="preserve">
+    <value>Officer</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Officer.</comment>
+  </data>
+  <data name="MetaAbyssal" xml:space="preserve">
+    <value>Abyssal</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Abyssal.</comment>
+  </data>
+  <data name="MetaLimitedTime" xml:space="preserve">
+    <value>Limited Time</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Limited Time (event items).</comment>
+  </data>
+  <data name="MetaStructureTech1" xml:space="preserve">
+    <value>Structure Tech I</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Structure Tech I.</comment>
+  </data>
+  <data name="MetaStructureTech2" xml:space="preserve">
+    <value>Structure Tech II</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Structure Tech II.</comment>
+  </data>
+  <data name="MetaStructureFaction" xml:space="preserve">
+    <value>Structure Faction</value>
+    <comment>Industry Ops, Meta Groups filter: a tick box for items whose SDE meta group is Structure Faction.</comment>
+  </data>
+  <data name="MetaNone" xml:space="preserve">
+    <value>None (materials, components…)</value>
+    <comment>Industry Ops, Meta Groups filter: the tick box for items with no meta group at all, such as materials, components and ammunition.</comment>
   </data>
   <data name="ExcludeGroups" xml:space="preserve">
     <value>Exclude Groups</value>
@@ -185,8 +289,20 @@
     <comment>Column header in IndustryOpportunitiesView.</comment>
   </data>
   <data name="ColIskSold30d" xml:space="preserve">
-    <value>ISK Sold 30d</value>
+    <value>Sales 30d</value>
     <comment>Column header in IndustryOpportunitiesView.</comment>
+  </data>
+  <data name="ColAvgPrice30d" xml:space="preserve">
+    <value>Avg Price 30d</value>
+    <comment>Column header in IndustryOpportunitiesView. The volume-weighted average price per unit over the last 30 days.</comment>
+  </data>
+  <data name="ColMargin30d" xml:space="preserve">
+    <value>Margin 30d</value>
+    <comment>Column header in IndustryOpportunitiesView. The margin at the 30-day average price: (average price minus build cost) over build cost.</comment>
+  </data>
+  <data name="ColProfit30d" xml:space="preserve">
+    <value>Profit 30d</value>
+    <comment>Column header in IndustryOpportunitiesView. Total profit on the units sold in the last 30 days: ISK sold minus build cost times units sold.</comment>
   </data>
   <data name="ScanningForIndustryOpportunities" xml:space="preserve">
     <value>Scanning for industry opportunities…</value>

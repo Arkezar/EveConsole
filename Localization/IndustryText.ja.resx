@@ -91,14 +91,92 @@
   <data name="Min30dUnitVol" xml:space="preserve">
     <value>30日間の最低取引数量</value>
   </data>
-  <data name="SkipFaction" xml:space="preserve">
-    <value>勢力アイテムを除外</value>
-  </data>
   <data name="SkipNonBpoTraceableItems" xml:space="preserve">
     <value>BPOに由来しないアイテムを除外</value>
   </data>
   <data name="TipOnlyItemsWhoseBlueprint" xml:space="preserve">
     <value>ブループリントが購入可能なBPOであるか、BPOから発明されるもの（T1 BPOからのT2など）のアイテムのみを対象にします。入手可能なBPOがない勢力・回数限定のBPCアイテム、ストーリーライン・士官・デッドスペースのアイテム、BPOをゲーム内で購入できなくなった「期間限定」イベントアイテムは除外されます。</value>
+  </data>
+  <data name="OnlyBlueprintsIOwn" xml:space="preserve">
+    <value>所有している設計図のみ</value>
+  </data>
+  <data name="TipOnlyBlueprintsIOwn" xml:space="preserve">
+    <value>そのアイテム自体の設計図（オリジナルまたはコピー）を、あなたのキャラクターまたは個人用に指定したコーポレーションが持っているアイテムのみ。次回の計算から適用されます。</value>
+  </data>
+  <data name="MinMarginPct" xml:space="preserve">
+    <value>最低利益率 %</value>
+  </data>
+  <data name="TipMinMargin" xml:space="preserve">
+    <value>利益率（利益を製造コストで割ったもの、利益率の列）がこの割合以上のアイテムのみ。次回の計算から適用されます。</value>
+  </data>
+  <data name="OppsErrMinMargin" xml:space="preserve">
+    <value>有効な最低利益率をパーセントで入力してください（空欄なら絞り込みなし）。</value>
+  </data>
+  <data name="IncludeGroups" xml:space="preserve">
+    <value>含めるグループ</value>
+  </data>
+  <data name="TipIncludeGroups" xml:space="preserve">
+    <value>選択すると、これらのマーケットグループとその下のグループのアイテムのみになります。除外グループはその中でも適用されます。次回の計算から適用されます。</value>
+  </data>
+  <data name="TipRemoveThisInclusion" xml:space="preserve">
+    <value>このグループを削除</value>
+  </data>
+  <data name="MinMargin30dPct" xml:space="preserve">
+    <value>30日間の最低利益率 %</value>
+  </data>
+  <data name="TipMinMargin30d" xml:space="preserve">
+    <value>30日間の平均価格での利益率（30日間の利益率の列）がこの割合以上のアイテムのみ。過去30日間に売れなかったアイテムは除外されます。次回の計算から適用されます。</value>
+  </data>
+  <data name="OppsErrMinMargin30d" xml:space="preserve">
+    <value>有効な30日間の最低利益率をパーセントで入力してください（空欄なら絞り込みなし）。</value>
+  </data>
+  <data name="OppsReportHistoryPriced" xml:space="preserve">
+    <value>* 売り注文なし：30日間の平均価格で算出。</value>
+  </data>
+  <data name="MetaGroupsLabel" xml:space="preserve">
+    <value>メタグループ</value>
+  </data>
+  <data name="TipMetaGroups" xml:space="preserve">
+    <value>チェックしたメタグループのアイテムのみ：テックレベルやアイテムの種類（テック I、テック II、勢力…）です。すべてチェックすると絞り込みなし。次回の計算から適用されます。</value>
+  </data>
+  <data name="OppsErrNoMetaGroup" xml:space="preserve">
+    <value>メタグループを少なくとも 1 つチェックしてください。</value>
+  </data>
+  <data name="MetaTech1" xml:space="preserve">
+    <value>テック I</value>
+  </data>
+  <data name="MetaTech2" xml:space="preserve">
+    <value>テック II</value>
+  </data>
+  <data name="MetaTech3" xml:space="preserve">
+    <value>テック III</value>
+  </data>
+  <data name="MetaFaction" xml:space="preserve">
+    <value>勢力</value>
+  </data>
+  <data name="MetaStoryline" xml:space="preserve">
+    <value>ストーリーライン</value>
+  </data>
+  <data name="MetaOfficer" xml:space="preserve">
+    <value>オフィサー</value>
+  </data>
+  <data name="MetaAbyssal" xml:space="preserve">
+    <value>アビサル</value>
+  </data>
+  <data name="MetaLimitedTime" xml:space="preserve">
+    <value>期間限定</value>
+  </data>
+  <data name="MetaStructureTech1" xml:space="preserve">
+    <value>ストラクチャー テック I</value>
+  </data>
+  <data name="MetaStructureTech2" xml:space="preserve">
+    <value>ストラクチャー テック II</value>
+  </data>
+  <data name="MetaStructureFaction" xml:space="preserve">
+    <value>ストラクチャー 勢力</value>
+  </data>
+  <data name="MetaNone" xml:space="preserve">
+    <value>なし（素材、部品など）</value>
   </data>
   <data name="ExcludeGroups" xml:space="preserve">
     <value>除外するグループ</value>
@@ -141,6 +219,15 @@
   </data>
   <data name="ColIskSold30d" xml:space="preserve">
     <value>30日間の販売額</value>
+  </data>
+  <data name="ColAvgPrice30d" xml:space="preserve">
+    <value>30日間の平均価格</value>
+  </data>
+  <data name="ColMargin30d" xml:space="preserve">
+    <value>30日間の利益率</value>
+  </data>
+  <data name="ColProfit30d" xml:space="preserve">
+    <value>30日間の利益</value>
   </data>
   <data name="ScanningForIndustryOpportunities" xml:space="preserve">
     <value>生産チャンスを検索中…</value>

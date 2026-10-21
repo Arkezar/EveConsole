@@ -3293,6 +3293,9 @@ public class App : Application
                 db.Database.ExecuteSqlRaw("""
                     INSERT OR IGNORE INTO "IndustryOpportunitiesSettings" ("Id", "ExcludedMarketGroupIds") VALUES (1, '')
                     """);
+                // Groups an item must be in to be listed; empty for every group. Mirrored for
+                // PostgreSQL in PostgresSchema.
+                try { db.Database.ExecuteSqlRaw("""ALTER TABLE "IndustryOpportunitiesSettings" ADD COLUMN "IncludedMarketGroupIds" TEXT NOT NULL DEFAULT ''"""); } catch { }
 
                 db.Database.ExecuteSqlRaw("""
                     CREATE TABLE IF NOT EXISTS "DismissedAlerts" (
@@ -4521,6 +4524,7 @@ public class App : Application
         services.AddSingleton<SlackAuthService>();
         services.AddSingleton<SlackService>();
         services.AddSingleton<DiscordService>();
+        services.AddSingleton<IndustryOpportunitiesService>();
         services.AddSingleton<ScheduledBlockRenderer>();
         services.AddSingleton<SchedulerService>();
         services.AddSingleton<DatabaseBackupService>();
