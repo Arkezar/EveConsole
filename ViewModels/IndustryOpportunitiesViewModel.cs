@@ -178,7 +178,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
     /// building, which is why the box this replaced, "Skip faction", was on by default. Somebody
     /// who had turned that off starts with Faction ticked.</para>
     /// </summary>
-    public ObservableCollection<CategoryChoice> MetaGroups { get; } = [];
+    public MultiChoice MetaGroups { get; private set; } = null!;
 
     private void LoadMetaGroups()
     {
@@ -189,14 +189,10 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
                 ? OppsMetaGroups.Default
                 : [.. OppsMetaGroups.All.Select(g => g.Id)];
 
-        foreach (var (id, label) in OppsMetaGroups.All)
-        {
-            var choice = new CategoryChoice(id.ToString(), label) { Selected = on.Contains(id) };
-            choice.WhenAnyValue(c => c.Selected).Skip(1).Subscribe(_ =>
-                UiState.Set(UiState.IndustryOppsMetaGroups,
-                            string.Join(",", MetaGroups.Where(m => m.Selected).Select(m => m.Key))));
-            MetaGroups.Add(choice);
-        }
+        MetaGroups = new MultiChoice(OppsMetaGroups.All.Select(g =>
+            new CategoryChoice(g.Id.ToString(), g.Label) { Selected = on.Contains(g.Id) }));
+        MetaGroups.SelectionChanged += () =>
+            UiState.Set(UiState.IndustryOppsMetaGroups, string.Join(",", MetaGroups.SelectedKeys));
     }
 
     // Only items whose blueprint is a buyable BPO, or is invented from one (T2 from a T1
@@ -351,7 +347,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
     /// <para>⚠️ Owned here, not by the grid. A grid bound to <see cref="Results"/> keeps its sort
     /// in a view of its own, which goes with the grid when the tab is left; bound to this, a
     /// rebuilt grid finds the sort — and draws its header arrow — from where it was left. The sort
-    /// is also remembered between sessions, and starts as ISK Sold 30d, highest first.</para>
+    /// is also remembered between sessions, and starts as Profit 30d, highest first.</para>
     /// </summary>
     public DataGridCollectionView ResultsView { get; }
 
@@ -363,7 +359,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
         var saved = (UiState.Get(UiState.IndustryOppsSort) ?? "").Split(':');
         var (path, direction) = saved.Length == 2 && SortablePaths.Contains(saved[0])
             ? (saved[0], saved[1] == "asc" ? ListSortDirection.Ascending : ListSortDirection.Descending)
-            : (nameof(IndustryRow.IskVol30d), ListSortDirection.Descending);
+            : (nameof(IndustryRow.Profit30d), ListSortDirection.Descending);
 
         ResultsView.SortDescriptions.Add(DataGridSortDescription.FromPath(path, direction));
     }
@@ -497,7 +493,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
             minMargin30d = mm30 / 100;
         }
 
-        if (MetaGroups.All(m => !m.Selected))
+        if (MetaGroups.AllSelected == false)
         {
             StatusText = IndustryText.OppsErrNoMetaGroup;
             return;
@@ -523,7 +519,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
                 MinUnitVol30d    = minUnitVol,
                 MinMargin        = minMargin,
                 MinMargin30d     = minMargin30d,
-                MetaGroups       = [.. MetaGroups.Where(m => m.Selected).Select(m => int.Parse(m.Key))],
+                MetaGroups       = [.. MetaGroups.SelectedKeys.Select(int.Parse)],
                 BpoOnly          = BpoOnly,
                 OwnedOnly        = OwnedOnly,
                 ExcludedGroupIds = [.. ExcludedMarketGroups.Select(g => g.MarketGroupId)],
@@ -545,7 +541,7 @@ public class IndustryOpportunitiesViewModel : ReactiveObject
             var rows       = result.Rows;
             var regionName = result.RegionName;
 
-            // ResultsView sorts them — by the sort the user left, Sales 30d if none. They come in
+            // ResultsView sorts them — by the sort the user left, Profit 30d if none. They come in
             // that default order anyway, so the list reads the same with the sort cleared.
             foreach (var r in rows)
                 Results.Add(r);

@@ -239,6 +239,7 @@ public class MainWindowViewModel : ReactiveObject
     public TradeOpportunitiesViewModel    TradeOpportunitiesVm   { get; }
     public IndustryOpportunitiesViewModel IndustryOpportunitiesVm { get; }
     public IndyParksViewModel             IndyParksVm            { get; }
+    public SystemIndexViewModel           SystemIndexVm          { get; }
     public ProductionCalculatorViewModel  ProductionCalcVm       { get; }
     public FittingViewModel               FittingVm              { get; }
     public PriceOverrideViewModel         PriceOverrideVm        { get; }
@@ -870,6 +871,7 @@ public class MainWindowViewModel : ReactiveObject
             "items"      => (ShellText.NavItemBrowser,    ItemBrowserVm,            true),
             "industry"   => (ShellText.NavIndustryJobs,   IndustryBrowserVm,        true),
             "indy_parks" => (ShellText.NavIndyParks,      IndyParksVm,              true),
+            "system_index" => (ShellText.NavSystemIndex,  SystemIndexVm,            true),
             "prod_calc"  => (ShellText.NavProductionCalc, ProductionCalcVm,         true),
             "fitting"    => (ShellText.NavFitting,        FittingVm,                true),
             "price_overrides" => (ShellText.NavPriceOverrides, PriceOverrideVm,     true),
@@ -1185,6 +1187,7 @@ public class MainWindowViewModel : ReactiveObject
         // ContractsVm is built further down; the lambda runs long after, so the flow analysis is the only thing objecting.
         OverviewVm.NavigateToActiveContracts   = () => { OpenTool("contracts"); ContractsVm!.ShowActivePersonal(); };
         OverviewVm.NavigateToOrderTracker      = () => OpenTool("order_tracker");
+        OverviewVm.NavigateToEveMail           = () => { OpenTool("eve_mail"); EveMailVm.ShowUnread(); };
         OverviewVm.RequestOpenKillmail = killMailId =>
         {
             OpenTool("killmails");
@@ -1201,6 +1204,11 @@ public class MainWindowViewModel : ReactiveObject
         ItemBrowserVm          = new ItemBrowserViewModel(dbFactory.CreateDbContext(), historyService, dbFactory, appPrefs);
         IndyParksVm            = new IndyParksViewModel(dbFactory, corpActivityService, errorLogger,
                                                         indyStructureLink, indyBulkAdd, pollingService);
+        // Indy Parks, Compare, and the System Index tool: one record of cost indices for both.
+        var costIndexHistory = new CostIndexHistoryService(dbFactory);
+        IndyParksVm.Compare = new ParkComparisonViewModel(new ParkComparisonService(prodCalcService, dbFactory), costIndexHistory, dbFactory);
+        IndyParksVm.ParksChanged += () => _ = IndyParksVm.Compare.LoadParksAsync();
+        SystemIndexVm       = new SystemIndexViewModel(dbFactory, costIndexHistory);
         WalletVm               = new WalletViewModel(dbFactory, errorLogger);
         ContractsVm            = new ContractsViewModel(dbFactory, esi, errorLogger, contractsService);
         NotificationsVm        = new NotificationsViewModel(dbFactory, esi, errorLogger);
@@ -1472,6 +1480,7 @@ public class MainWindowViewModel : ReactiveObject
             [
                 new NavItem("industry",      ShellText.NavIndustryJobs),
                 new NavItem("indy_parks",    ShellText.NavIndyParks),
+                new NavItem("system_index",  ShellText.NavSystemIndex),
                 new NavItem("prod_calc",     ShellText.NavProductionCalc),
                 new NavItem("planetary_industry", ShellText.NavPlanetaryIndustry),
                 new NavItem("price_overrides", ShellText.NavPriceOverrides),

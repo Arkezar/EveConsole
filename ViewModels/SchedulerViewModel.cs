@@ -93,7 +93,41 @@ public sealed class MarketGroupChip
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 }
 
-/// <summary>One of the five Top 10 lists, ticked or not. Also one column of an Industry Ops table.</summary>
+/// <summary>
+/// One column of an Industry Ops section's table: its own name, the header it prints (its own
+/// unless renamed), and the commands that remove it or move it — on the row, not reached from
+/// the template through a cast.
+/// </summary>
+public sealed class OppsColumnVm : ReactiveObject
+{
+    public OppsColumnVm(string key, string name, string header, bool isItem,
+                        Action<OppsColumnVm> remove, Action<OppsColumnVm, int> move)
+    {
+        Key     = key;
+        Name    = name;
+        _header = header;
+        IsItem  = isItem;
+        RemoveCommand   = ReactiveCommand.Create(() => remove(this));
+        MoveUpCommand   = ReactiveCommand.Create(() => move(this, -1));
+        MoveDownCommand = ReactiveCommand.Create(() => move(this, +1));
+    }
+
+    public string Key    { get; }
+    /// <summary>The column's own name, which is also its header until renamed.</summary>
+    public string Name   { get; }
+    /// <summary>The item: always first, never removed or moved; only its header can change.</summary>
+    public bool   IsItem { get; }
+    public bool   CanMove => !IsItem;
+
+    private string _header;
+    public string Header { get => _header; set => this.RaiseAndSetIfChanged(ref _header, value); }
+
+    public ReactiveCommand<Unit, Unit> RemoveCommand   { get; }
+    public ReactiveCommand<Unit, Unit> MoveUpCommand   { get; }
+    public ReactiveCommand<Unit, Unit> MoveDownCommand { get; }
+}
+
+/// <summary>One of the five Top 10 lists, ticked or not.</summary>
 public sealed class CategoryChoice(string key, string title) : ReactiveObject
 {
     public string Key   { get; } = key;
@@ -243,15 +277,19 @@ public sealed class MessageBlockVm : ReactiveObject
         _oppsMinMargin     = Num(model.OppsMinMarginPct);
         _oppsMinMargin30d  = Num(model.OppsMinMargin30dPct);
         int[] meta = fresh && IsOpps ? OppsMetaGroups.Default : [.. model.MetaGroupsOrDefault()];
-        foreach (var (id, label) in OppsMetaGroups.All)
-            OppsMetaGroupChoices.Add(new CategoryChoice(id.ToString(), label) { Selected = meta.Contains(id) });
+        OppsMetaPicker = new MultiChoice(OppsMetaGroups.All.Select(g =>
+            new CategoryChoice(g.Id.ToString(), g.Label) { Selected = meta.Contains(g.Id) }));
         _oppsBpoOnly       = model.OppsBpoOnly;
         _oppsOwnedOnly     = model.OppsOwnedOnly;
         _oppsExcludedIds   = [.. model.OppsExcludedGroupIds];
         _oppsIncludedIds   = [.. model.OppsIncludedGroupIds];
-        string[] columns = fresh && IsOpps ? IndustryOppsReport.DefaultColumns : [.. model.OppsColumns];
-        foreach (var c in IndustryOppsReport.Columns.Where(c => c.Key != IndustryOppsReport.Item))
-            OppsColumns.Add(new CategoryChoice(c.Key, c.Header) { Selected = columns.Contains(c.Key) });
+        // The item first, then the columns in the order saved; a saved header is what was typed.
+        string[] columns = fresh && IsOpps ? IndustryOppsReport.DefaultColumns : [IndustryOppsReport.Item, .. model.OppsColumns];
+        var known = IndustryOppsReport.Columns.ToDictionary(c => c.Key);
+        foreach (var key in columns.Distinct().Where(known.ContainsKey))
+            OppsTable.Add(Column(known[key], model.OppsHeaders.GetValueOrDefault(key)));
+        AddOppsColumnCommand = ReactiveCommand.Create(AddOppsColumn);
+        RefreshAddable();
         _oppsSortBy        = OppsSortOptions.FirstOrDefault(o => o.Key == model.OppsSortBy)
                              ?? OppsSortOptions.First(o => o.Key == IndustryOppsReport.DefaultSort);
         _oppsSortDirection = model.OppsSortDescending ? SortDirectionOptions[0] : SortDirectionOptions[1];
@@ -574,8 +612,8 @@ public sealed class MessageBlockVm : ReactiveObject
 
     private bool _oppsBpoOnly, _oppsOwnedOnly;
 
-    /// <summary>The meta groups, ticked or not. A new section starts as the tool does.</summary>
-    public ObservableCollection<CategoryChoice> OppsMetaGroupChoices { get; } = [];
+    /// <summary>The meta groups, ticked or not, as one dropdown. A new section starts as the tool does.</summary>
+    public MultiChoice OppsMetaPicker { get; }
     public bool OppsBpoOnly     { get => _oppsBpoOnly;     set => this.RaiseAndSetIfChanged(ref _oppsBpoOnly, value); }
     public bool OppsOwnedOnly   { get => _oppsOwnedOnly;   set => this.RaiseAndSetIfChanged(ref _oppsOwnedOnly, value); }
 
@@ -615,8 +653,45 @@ public sealed class MessageBlockVm : ReactiveObject
         foreach (var id in _oppsIncludedIds) OppsIncluded.Add(Chip(_oppsIncludedIds, OppsIncluded, id, names.GetValueOrDefault(id, $"#{id}")));
     }
 
-    /// <summary>The table's columns after the item, ticked or not.</summary>
-    public ObservableCollection<CategoryChoice> OppsColumns { get; } = [];
+    /// <summary>The table's columns, the item first, in the order printed.</summary>
+    public ObservableCollection<OppsColumnVm> OppsTable { get; } = [];
+
+    /// <summary>The columns not in the table yet, for the Add dropdown.</summary>
+    public ObservableCollection<LabelledChoice> OppsAddable { get; } = [];
+
+    private LabelledChoice? _oppsToAdd;
+    public LabelledChoice? OppsToAdd { get => _oppsToAdd; set => this.RaiseAndSetIfChanged(ref _oppsToAdd, value); }
+
+    public ReactiveCommand<Unit, Unit> AddOppsColumnCommand { get; }
+
+    private OppsColumnVm Column(IndustryOppsReport.Column c, string? header) => new(
+        c.Key, c.Header, header is { Length: > 0 } ? header : c.Header, c.Key == IndustryOppsReport.Item,
+        col => { OppsTable.Remove(col); RefreshAddable(); },
+        (col, by) =>
+        {
+            // The item holds the first place: nothing moves above it.
+            var i = OppsTable.IndexOf(col);
+            var j = i + by;
+            if (i < 0 || j < 1 || j >= OppsTable.Count) return;
+            OppsTable.Move(i, j);
+        });
+
+    private void AddOppsColumn()
+    {
+        if (OppsToAdd is not { } pick) return;
+        var c = IndustryOppsReport.Columns.First(x => x.Key == pick.Key);
+        OppsTable.Add(Column(c, null));
+        RefreshAddable();
+    }
+
+    /// <summary>The dropdown offers what is not in the table, in the grid's order, the first picked.</summary>
+    private void RefreshAddable()
+    {
+        OppsAddable.Clear();
+        foreach (var c in IndustryOppsReport.Columns.Where(c => OppsTable.All(t => t.Key != c.Key)))
+            OppsAddable.Add(new LabelledChoice(c.Key, c.Header));
+        OppsToAdd = OppsAddable.FirstOrDefault();
+    }
 
     private LabelledChoice _oppsSortBy;
     public LabelledChoice OppsSortBy { get => _oppsSortBy; set => this.RaiseAndSetIfChanged(ref _oppsSortBy, value ?? OppsSortOptions[0]); }
@@ -689,12 +764,17 @@ public sealed class MessageBlockVm : ReactiveObject
         OppsMinUnitVol30d    = Parse(OppsMinUnitVol),
         OppsMinMarginPct     = Parse(OppsMinMargin),
         OppsMinMargin30dPct  = Parse(OppsMinMargin30d),
-        OppsMetaGroups       = [.. OppsMetaGroupChoices.Where(c => c.Selected).Select(c => int.Parse(c.Key))],
+        OppsMetaGroups       = [.. OppsMetaPicker.SelectedKeys.Select(int.Parse)],
         OppsBpoOnly          = OppsBpoOnly,
         OppsOwnedOnly        = OppsOwnedOnly,
         OppsExcludedGroupIds = [.. _oppsExcludedIds],
         OppsIncludedGroupIds = [.. _oppsIncludedIds],
-        OppsColumns          = [.. OppsColumns.Where(c => c.Selected).Select(c => c.Key)],
+        OppsColumns          = [.. OppsTable.Where(c => !c.IsItem).Select(c => c.Key)],
+        // Only headers changed from the column's own: one left alone follows the interface
+        // language, and a blank box means the column's own header too.
+        OppsHeaders          = OppsTable
+            .Where(c => c.Header.Trim().Length > 0 && c.Header.Trim() != c.Name)
+            .ToDictionary(c => c.Key, c => c.Header.Trim()),
         OppsSortBy           = OppsSortBy.Key,
         OppsSortDescending   = OppsSortDirection.Key == "desc",
         OppsRowLimit         = int.TryParse(OppsRowLimit.Trim(), out var limit) && limit > 0 ? limit : 0,
@@ -1509,7 +1589,7 @@ public sealed class SchedulerViewModel : ReactiveObject
             if (b.IsText    && string.IsNullOrWhiteSpace(b.Text))   return string.Format(AlarmsText.SectionEmpty, n, heading);
             if (b.IsOpps    && b.OppsMarket is null)                return string.Format(AlarmsText.SectionNeedsMarket, n, heading);
             if (b.IsOpps    && b.OppsBadField is { } field)         return string.Format(AlarmsText.SectionBadNumber, n, heading, field);
-            if (b.IsOpps    && b.OppsMetaGroupChoices.All(c => !c.Selected))
+            if (b.IsOpps    && b.OppsMetaPicker.AllSelected == false)
                 return string.Format(AlarmsText.SectionNeedsMetaGroup, n, heading);
 
             // ⚠️ Not guarded on Projects.Count. With the list stored as inclusions, a section

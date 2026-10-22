@@ -6,9 +6,13 @@ using EveConsole.ViewModels;
 namespace EveConsole.Services;
 
 /// <summary>
-/// The meta groups the Meta Groups filter offers: what tech level or kind of item a thing is.
-/// Every group a buildable item has in the SDE, and None for items with no group at all
-/// (materials, components, ammunition…), which is stored as 0.
+/// The meta groups the Meta Groups filter offers: what tech level or kind of item a thing is,
+/// and None for items with no group at all (materials, components, ammunition…), stored as 0.
+///
+/// <para>⚠️ Only groups with items worth listing. Officer and Limited Time have a few buildable
+/// items each, all event or drop prints whose "build cost" is mostly the market price itself,
+/// so they are not offered — and an item in a group not offered never appears. Deadspace and
+/// the rest have nothing buildable at all.</para>
 /// </summary>
 public static class OppsMetaGroups
 {
@@ -24,9 +28,7 @@ public static class OppsMetaGroups
         (14, IndustryText.MetaTech3),
         (Faction, IndustryText.MetaFaction),
         (3,  IndustryText.MetaStoryline),
-        (5,  IndustryText.MetaOfficer),
         (15, IndustryText.MetaAbyssal),
-        (19, IndustryText.MetaLimitedTime),
         (54, IndustryText.MetaStructureTech1),
         (53, IndustryText.MetaStructureTech2),
         (52, IndustryText.MetaStructureFaction),
@@ -37,13 +39,6 @@ public static class OppsMetaGroups
     /// what the old "Skip faction" box did, ticked by default.</summary>
     public static int[] Default => [.. All.Select(g => g.Id).Where(id => id != Faction)];
 
-    /// <summary>Every group ticked: no filter at all, so a group the SDE adds later is not
-    /// quietly left out.</summary>
-    public static bool IsEvery(IEnumerable<int> ids)
-    {
-        var set = ids.ToHashSet();
-        return All.All(g => set.Contains(g.Id));
-    }
 }
 
 /// <summary>
@@ -60,7 +55,7 @@ public sealed record IndustryOppsQuery
     public double?      MinUnitVol30d { get; init; }
     public double?      MinMargin     { get; init; }
     public double?      MinMargin30d  { get; init; }
-    /// <summary>The meta groups kept (<see cref="OppsMetaGroups"/>); null, or every one, keeps all.</summary>
+    /// <summary>The meta groups kept (<see cref="OppsMetaGroups"/>); null keeps every item, any group.</summary>
     public IReadOnlyCollection<int>? MetaGroups { get; init; }
     public bool         BpoOnly       { get; init; } = true;
     public bool         OwnedOnly     { get; init; }
@@ -115,7 +110,7 @@ public sealed class IndustryOpportunitiesService(MarketHistoryService history, B
 
     /// <summary>
     /// Runs the calculation. Null when the market config does not exist or is switched off.
-    /// The rows come in the tool's default order: Sales 30d, then profit per slot-day.
+    /// The rows come in the tool's default order: Profit 30d, then profit per slot-day.
     /// </summary>
     public async Task<IndustryOppsResult?> CalculateAsync(IndustryOppsQuery q, CancellationToken ct = default)
     {
@@ -136,7 +131,7 @@ public sealed class IndustryOpportunitiesService(MarketHistoryService history, B
 
         var rows = await BuildRowsAsync(q, candidates, regionId, typesWithSell, typesWithBuy, configHasRawOrders, ct);
         return new IndustryOppsResult(
-            [.. rows.OrderByDescending(r => r.IskVol30d).ThenByDescending(r => r.ProfitPerSlotDay)],
+            [.. rows.OrderByDescending(r => r.Profit30d).ThenByDescending(r => r.ProfitPerSlotDay)],
             regionId, regionName, NoRegion: false);
     }
 
@@ -187,8 +182,9 @@ public sealed class IndustryOpportunitiesService(MarketHistoryService history, B
             ? $"""AND t."MarketGroupId" IN ({string.Join(",", includedGroupIds)}) """
             : "";
 
-        // Meta groups: an item with none counts as 0, the None box. Ids only: interpolated.
-        var metaClause = q.MetaGroups is { } meta && !OppsMetaGroups.IsEvery(meta)
+        // Meta groups: an item with none counts as 0, the None box. Ids only: interpolated. All
+        // ticked is still a list: a group not offered stays out.
+        var metaClause = q.MetaGroups is { } meta
             ? $"""AND COALESCE(t."MetaGroupId", 0) IN ({string.Join(",", meta.DefaultIfEmpty(-1))}) """
             : "";
 
