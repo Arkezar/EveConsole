@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.Json;
+using Avalonia.Media;
 using EveConsole.Data;
 using EveConsole.Localization;
 using EveConsole.Models;
@@ -11,94 +12,110 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using Microsoft.EntityFrameworkCore;
 using ReactiveUI;
-using SkiaSharp;
 
 namespace EveConsole.ViewModels;
 
-/// <summary>One line of the comparison's job list: an item, how many, at what ME.</summary>
-public sealed class CompareJobVm : ReactiveObject
+/// <summary>One line in one park, as the results grid shows it. The ranking and the texts are
+/// the report's, so the grid and a scheduled post say the same.</summary>
+public sealed class ParkCompareRowVm(RankedCost ranked)
 {
-    public CompareJobVm(int typeId, string typeName, long quantity, int me, Action<CompareJobVm> remove, Action changed)
-    {
-        TypeId    = typeId;
-        TypeName  = typeName;
-        _quantity = Math.Max(1, quantity).ToString();
-        _me       = Math.Clamp(me, 0, 10).ToString();
-        RemoveCommand = ReactiveCommand.Create(() => remove(this));
-        this.WhenAnyValue(x => x.QuantityText, x => x.MeText).Skip(1).Subscribe(_ => changed());
-    }
+    public RankedCost Ranked { get; } = ranked;
+    public ParkCost   Cost   => Ranked.Cost;
 
-    public int    TypeId   { get; }
-    public string TypeName { get; }
-    public string DisplayName => SdeNames.Type(TypeId, TypeName);
+    /// <summary>The cheapest park for this line.</summary>
+    public bool   IsBest    => Ranked.IsBest;
+    /// <summary>How much dearer than the cheapest, as a fraction; 0 for the cheapest.</summary>
+    public double OverBest  => Ranked.OverBest;
+    /// <summary>The quickest park for this line.</summary>
+    public bool   IsFastest => Ranked.IsFastest;
+    /// <summary>How much slower than the quickest, as a fraction; 0 for the quickest.</summary>
+    public double SlowerBy  => Ranked.SlowerBy;
 
-    // Boxes hold what was typed; a word reads as the default (1 unit, ME 10).
-    private string _quantity, _me;
-    public string QuantityText { get => _quantity; set => this.RaiseAndSetIfChanged(ref _quantity, value); }
-    public string MeText       { get => _me;       set => this.RaiseAndSetIfChanged(ref _me, value); }
-
-    public long Quantity => long.TryParse(QuantityText.Replace(",", "").Trim(), out var q) && q > 0 ? q : 1;
-    public int  Me       => int.TryParse(MeText.Trim(), out var m) ? Math.Clamp(m, 0, 10) : 10;
-
-    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
+    public string  ItemName       => Ranked.ItemName;
+    public string  OperationLabel => ParkCompareReport.OpLabel(Cost.Job.Op);
+    public string  ParkName       => Cost.ParkName;
+    public long    Units          => Cost.Produced;
+    public decimal Total          => Cost.Total;
+    public decimal PerUnit        => Cost.PerUnit;
+    public double  Seconds        => Cost.Seconds ?? double.MaxValue;
+    public string  Detail         => Cost.Detail;
+    public string UnitsText     => Ranked.UnitsText;
+    public string MaterialsText => Ranked.MaterialsText;
+    public string JobCostText   => Ranked.JobCostText;
+    public string LeftoversText => Ranked.LeftoversText;
+    public string TotalText     => Ranked.TotalText;
+    public string PerUnitText   => Ranked.PerUnitText;
+    public string OverBestText  => Ranked.OverBestText;
+    public string TimeText      => Ranked.TimeText;
+    public string SlowerText    => Ranked.SlowerText;
 }
 
-/// <summary>One item in one park, as the results grid shows it.</summary>
-public sealed class ParkCompareRowVm
+/// <summary>One job in one park, as a summary cell: cost and time, each against the best park
+/// for that job. Empty where the job is not done there.</summary>
+public sealed class CompareSummaryCellVm(RankedCost? ranked)
 {
-    public required ParkCost Cost { get; init; }
-    /// <summary>The cheapest park for this item.</summary>
-    public bool IsBest { get; init; }
-    /// <summary>How much dearer than the cheapest, as a fraction; 0 for the cheapest.</summary>
-    public double OverBest { get; init; }
+    private readonly RankedCost? _r = ranked is { Done: true } ? ranked : null;
 
-    public string ItemName   => SdeNames.Type(Cost.Job.TypeId, Cost.Job.TypeName);
-    public string ParkName   => Cost.ParkName;
-    public long   Units      => Cost.Produced;
-    public decimal Total     => Cost.Total;
-    public decimal PerUnit   => Cost.PerUnit;
-    public string UnitsText     => Cost.Buildable ? Units.ToString("N0") : "–";
-    public string MaterialsText => Cost.Buildable ? MarketFmt.Isk((double)Cost.Materials) : "–";
-    public string JobCostText   => Cost.Buildable ? MarketFmt.Isk((double)Cost.JobCost) : "–";
-    public string LeftoversText => !Cost.Buildable ? "–" : Cost.Leftovers > 0 ? "−" + MarketFmt.Isk((double)Cost.Leftovers) : "0";
-    public string TotalText     => Cost.Buildable ? MarketFmt.Isk((double)Cost.Total) : IndustryText.CompareNotBuilt;
-    public string PerUnitText   => Cost.Buildable ? MarketFmt.Isk((double)Cost.PerUnit) : "–";
-    public string OverBestText  => !Cost.Buildable ? "" : IsBest ? IndustryText.CompareBest : $"+{OverBest:P1}";
+    public bool    Has      => _r is not null;
+    public decimal Total    => _r?.Cost.Total ?? decimal.MaxValue;
+    public double  OverBest => _r?.OverBest ?? double.MaxValue;
+    public double  Seconds  => _r?.Cost.Seconds ?? double.MaxValue;
+    public double  SlowerBy => _r is { Cost.Seconds: not null } r ? r.SlowerBy : double.MaxValue;
+
+    public string CostText     => _r?.TotalText ?? "–";
+    public string OverBestText => _r?.OverBestText ?? "";
+    public string TimeText     => _r?.TimeText ?? "–";
+    public string SlowerText   => _r?.SlowerText ?? "";
+    /// <summary>The cost cell's tip; none where there is nothing to say, so no empty tip shows.</summary>
+    public string? Detail      => string.IsNullOrEmpty(_r?.Cost.Detail) ? null : _r.Cost.Detail;
+
+    public IBrush FigureColor => IskText.FigureColour(Has);
+    public IBrush OverColor   => Colour(_r?.CostStanding ?? Standing.None);
+    public IBrush SlowerColor => Colour(_r?.TimeStanding ?? Standing.None);
+
+    private static IBrush Colour(Standing s) => s switch
+    {
+        Standing.Best      => Palette.Good,
+        Standing.FarBehind => Palette.Bad,
+        Standing.None      => Palette.TextFaint,
+        _                  => Palette.TextPrimary,
+    };
+}
+
+/// <summary>A summary row: a job across the parks, or a park across the jobs.</summary>
+public sealed class CompareSummaryRowVm(string title, IReadOnlyList<CompareSummaryCellVm> cells)
+{
+    public string Title { get; } = title;
+    public IReadOnlyList<CompareSummaryCellVm> Cells { get; } = cells;
 }
 
 /// <summary>
-/// Indy Parks, Compare: the same items built in every park ticked, side by side, and the cost
-/// again for each past day of system cost indices.
+/// Indy Parks, Compare: the same job list done in every park ticked — builds, copies, invention,
+/// research — side by side for cost and time, and the cost again for each past day of system
+/// cost indices. What it shows is <see cref="ParkCompareReport"/>'s, which a scheduled post uses.
 ///
 /// <para>The job list and the parks left unticked are remembered on this machine (UiState); a
 /// park defined later starts ticked, as all of them do.</para>
 /// </summary>
 public sealed class ParkComparisonViewModel : ReactiveObject
 {
-    private readonly ParkComparisonService           _service;
-    private readonly CostIndexHistoryService         _history;
-    private readonly IDbContextFactory<AppDbContext> _dbFactory;
+    private readonly ParkComparisonService   _service;
+    private readonly CostIndexHistoryService _history;
 
     public ParkComparisonViewModel(ParkComparisonService service, CostIndexHistoryService history,
                                    IDbContextFactory<AppDbContext> dbFactory)
     {
-        _service   = service;
-        _history   = history;
-        _dbFactory = dbFactory;
+        _service = service;
+        _history = history;
+
+        JobList = new CompareJobListVm(service, dbFactory, LoadJobs());
+        JobList.ListChanged += () => UiState.Set(UiState.IndyCompareJobs, JsonSerializer.Serialize(JobList.Specs));
 
         CalculateCommand = ReactiveCommand.CreateFromTask(CalculateAsync);
-        AddCommand       = ReactiveCommand.Create<ProdTypeSearchResult>(Add);
         CalculateCommand.ThrownExceptions.Subscribe(ex => StatusText = string.Format(CommonText.ErrorWithMessage, ex.Message));
 
-        LoadJobs();
         ChartPaint.TrackAxesOf(this);
-
-        this.WhenAnyValue(x => x.SearchText)
-            .Throttle(TimeSpan.FromMilliseconds(250))
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(t => _ = SearchAsync(t ?? ""));
-
-        this.WhenAnyValue(x => x.ChartChoice).Skip(1).Subscribe(_ => BuildChart());
+        this.WhenAnyValue(x => x.ChartChoice).Skip(1).Subscribe(_ => { if (!_refilling) BuildCharts(); });
     }
 
     // ── Parks ────────────────────────────────────────────────────────────────
@@ -107,7 +124,8 @@ public sealed class ParkComparisonViewModel : ReactiveObject
     /// <summary>Every park, as one dropdown; all ticked unless unticked here before.</summary>
     public MultiChoice Parks { get => _parks; private set => this.RaiseAndSetIfChanged(ref _parks, value); }
 
-    /// <summary>The park list, read again — the tab is shown, or a park was added or renamed.</summary>
+    /// <summary>The park list, read again — the tab is shown, or a park was added or renamed. The
+    /// decryptors come with it, the first time.</summary>
     public async Task LoadParksAsync()
     {
         var parks = await Task.Run(() => _service.ParksAsync());
@@ -117,82 +135,21 @@ public sealed class ParkComparisonViewModel : ReactiveObject
         choice.SelectionChanged += () => UiState.Set(UiState.IndyCompareParksOff,
             string.Join(",", choice.Items.Where(i => !i.Selected).Select(i => i.Key)));
         Parks = choice;
+        await JobList.LoadDecryptorsAsync();
     }
 
     // ── The job list ─────────────────────────────────────────────────────────
 
-    public ObservableCollection<CompareJobVm> Jobs { get; } = [];
+    /// <summary>The lines to compare, remembered on this machine.</summary>
+    public CompareJobListVm JobList { get; }
 
-    private sealed record SavedJob(int T, string N, long Q, int Me);
+    /// <summary>Shorthand for the list's lines.</summary>
+    public ObservableCollection<CompareJobVm> Jobs => JobList.Jobs;
 
-    private void LoadJobs()
+    private static List<CompareJobSpec> LoadJobs()
     {
-        try
-        {
-            var saved = JsonSerializer.Deserialize<List<SavedJob>>(UiState.Get(UiState.IndyCompareJobs) ?? "[]") ?? [];
-            foreach (var s in saved) Jobs.Add(NewJob(s.T, s.N, s.Q, s.Me));
-        }
-        catch (JsonException) { /* a list that cannot be read starts empty */ }
-    }
-
-    private void SaveJobs() => UiState.Set(UiState.IndyCompareJobs,
-        JsonSerializer.Serialize(Jobs.Select(j => new SavedJob(j.TypeId, j.TypeName, j.Quantity, j.Me))));
-
-    private CompareJobVm NewJob(int typeId, string name, long quantity, int me) =>
-        new(typeId, name, quantity, me, j => { Jobs.Remove(j); SaveJobs(); }, SaveJobs);
-
-    public ReactiveCommand<ProdTypeSearchResult, Unit> AddCommand { get; }
-
-    /// <summary>A search result picked: added to the list, after the click that picked it.</summary>
-    public ProdTypeSearchResult? PickedResult
-    {
-        get => null;
-        set { if (value is { } pick) Avalonia.Threading.Dispatcher.UIThread.Post(() => Add(pick)); }
-    }
-
-    private void Add(ProdTypeSearchResult pick)
-    {
-        if (Jobs.All(j => j.TypeId != pick.TypeId)) Jobs.Add(NewJob(pick.TypeId, pick.TypeName, 1, 10));
-        SaveJobs();
-        SearchText = "";
-    }
-
-    // ── Search: only what can be built ───────────────────────────────────────
-
-    private string _searchText = "";
-    public string SearchText { get => _searchText; set => this.RaiseAndSetIfChanged(ref _searchText, value); }
-
-    public ObservableCollection<ProdTypeSearchResult> SearchResults { get; } = [];
-
-    private bool _showResults;
-    public bool ShowResults { get => _showResults; private set => this.RaiseAndSetIfChanged(ref _showResults, value); }
-
-    private async Task SearchAsync(string text)
-    {
-        text = text.Trim();
-        SearchResults.Clear();
-        if (text.Length < 2) { ShowResults = false; return; }
-
-        await SdeNames.EnsureLoadedAsync();
-        var shownIds = SdeNames.Find(SdeNameKind.Type, text).Select(id => (int)id).ToList();
-        var matches = await Task.Run(async () =>
-        {
-            await using var db = await _dbFactory.CreateDbContextAsync();
-            // As the Production Calculator offers them: the products of a manufacturing or reaction blueprint.
-            return await db.SdeTypes.AsNoTracking()
-                .Where(t => t.Published
-                         && (EF.Functions.Like(t.Name, $"%{text}%") || shownIds.Contains(t.TypeId))
-                         && db.SdeBlueprintProducts.Any(p => p.ProductTypeId == t.TypeId
-                                && (p.Activity == "manufacturing" || p.Activity == "reaction")))
-                .OrderBy(t => t.Name).Take(50)
-                .Select(t => new { t.TypeId, t.Name }).ToListAsync();
-        });
-        if (SearchText.Trim() != text) return;   // typed on since
-
-        foreach (var r in matches.Select(m => new ProdTypeSearchResult { TypeId = m.TypeId, TypeName = m.Name })
-                                 .OrderBy(r => r.DisplayName, StringComparer.CurrentCulture))
-            SearchResults.Add(r);
-        ShowResults = SearchResults.Count > 0;
+        try { return JsonSerializer.Deserialize<List<CompareJobSpec>>(UiState.Get(UiState.IndyCompareJobs) ?? "[]") ?? []; }
+        catch (JsonException) { return []; }   // a list that cannot be read starts empty
     }
 
     // ── Calculate ────────────────────────────────────────────────────────────
@@ -204,10 +161,15 @@ public sealed class ParkComparisonViewModel : ReactiveObject
     private string _statusText = IndustryText.CompareStart;
     public string StatusText { get => _statusText; private set => this.RaiseAndSetIfChanged(ref _statusText, value); }
 
+    /// <summary>A line in the status, for what the view does itself: a picture that would not copy.</summary>
+    public void ShowStatus(string text) => StatusText = text;
+
     private bool _isCalculating;
     public bool IsCalculating { get => _isCalculating; private set => this.RaiseAndSetIfChanged(ref _isCalculating, value); }
 
-    private List<ParkCost> _costs = [];
+    private List<ParkCost>   _costs  = [];
+    private List<RankedCost> _ranked = [];
+    private List<string>     _lineLabels = [];
     private Dictionary<(int SystemId, string Activity), SortedDictionary<DateOnly, double>> _indexHistory = [];
 
     private async Task CalculateAsync()
@@ -219,7 +181,8 @@ public sealed class ParkComparisonViewModel : ReactiveObject
         var parks = slots.Where(p => p.Selected).Select(p => (p.Id, p.Title, p.Slot)).ToList();
         if (parks.Count == 0) { StatusText = IndustryText.CompareErrNoParks; return; }
 
-        var jobs = Jobs.Select(j => new ParkCompareJob(j.TypeId, j.TypeName, j.Quantity, j.Me)).ToList();
+        var specs = JobList.Specs;
+        var jobs  = specs.Select((j, i) => j.ToJob(i)).ToList();
         IsCalculating = true;
         StatusText    = IndustryText.CompareCalculating;
         try
@@ -230,34 +193,85 @@ public sealed class ParkComparisonViewModel : ReactiveObject
             var activities = _costs.SelectMany(c => c.Terms).Select(t => t.Activity).Distinct().ToList();
             _indexHistory  = await Task.Run(() => _history.DailyAsync(systems, activities));
 
+            _ranked     = ParkCompareReport.Rank(_costs);
+            _lineLabels = [.. specs.Select(s => s.Label)];
             Results.Clear();
-            foreach (var item in _costs.GroupBy(c => c.Job.TypeId))
-            {
-                var best = item.Where(c => c.Buildable).Select(c => c.Total).DefaultIfEmpty(0).Min();
-                foreach (var c in item.OrderBy(c => !c.Buildable).ThenBy(c => c.Total))
-                    Results.Add(new ParkCompareRowVm
-                    {
-                        Cost     = c,
-                        IsBest   = c.Buildable && c.Total == best,
-                        OverBest = c.Buildable && best > 0 ? (double)((c.Total - best) / best) : 0,
-                    });
-            }
+            foreach (var r in _ranked) Results.Add(new ParkCompareRowVm(r));
+            BuildSummary();
 
-            ChartChoices.Clear();
-            ChartChoices.Add(new LabelledChoice("", IndustryText.CompareAllItems));
-            foreach (var j in Jobs) ChartChoices.Add(new LabelledChoice(j.TypeId.ToString(), j.DisplayName));
-            ChartChoice = ChartChoices[0];
-            BuildChart();
+            // The charts are built once, after the list is refilled. Refilling it moves the
+            // selection twice (cleared, then the first entry), and each move rebuilt the charts:
+            // three sets of series in a row, the first Calculate showing none of them.
+            _refilling = true;
+            try
+            {
+                ChartChoices.Clear();
+                ChartChoices.Add(new LabelledChoice("", IndustryText.CompareAllItems));
+                for (var i = 0; i < _lineLabels.Count; i++) ChartChoices.Add(new LabelledChoice(i.ToString(), _lineLabels[i]));
+                ChartChoice = ChartChoices[0];
+            }
+            finally { _refilling = false; }
+            BuildCharts();
 
             StatusText = string.Format(IndustryText.CompareStatusDone, jobs.Count, parks.Count);
         }
         finally { IsCalculating = false; }
     }
 
-    // ── The chart: today's plan, past days' indices ──────────────────────────
+    // ── The summary: the detail grid as jobs by parks, or parks by jobs ──────
 
-    /// <summary>All items together, or one of them.</summary>
+    private const string ByJob = "jobs", ByPark = "parks";
+
+    public List<LabelledChoice> SummaryLayouts { get; } =
+        [new(ByJob, IndustryText.CompareSummaryRowsJobs), new(ByPark, IndustryText.CompareSummaryRowsParks)];
+
+    private LabelledChoice? _summaryLayout;
+    /// <summary>What the summary's rows are; the other becomes its groups of columns. Remembered
+    /// on this machine.</summary>
+    public LabelledChoice SummaryLayout
+    {
+        get => _summaryLayout ??= SummaryLayouts.FirstOrDefault(l => l.Key == UiState.Get(UiState.IndyCompareSummaryBy)) ?? SummaryLayouts[0];
+        set
+        {
+            if (value is null || value.Key == SummaryLayout.Key) return;
+            _summaryLayout = value;
+            this.RaisePropertyChanged();
+            UiState.Set(UiState.IndyCompareSummaryBy, value.Key);
+            BuildSummary();
+        }
+    }
+
+    public bool SummaryByPark => SummaryLayout.Key == ByPark;
+
+    /// <summary>The headings over the groups of four columns: the parks, or the jobs. Set
+    /// before the rows, so the view builds the columns the rows then fill.</summary>
+    public IReadOnlyList<string> SummaryGroups { get; private set; } = [];
+
+    public ObservableCollection<CompareSummaryRowVm> SummaryRows { get; } = [];
+
+    public bool HasSummary => SummaryRows.Count > 0;
+
+    private void BuildSummary()
+    {
+        var pivot = ParkCompareReport.Pivot(_ranked, _lineLabels, SummaryByPark);
+        SummaryRows.Clear();
+        SummaryGroups = pivot.Groups;
+        this.RaisePropertyChanged(nameof(SummaryGroups));
+        this.RaisePropertyChanged(nameof(SummaryByPark));
+        foreach (var row in pivot.Rows)
+            // ⚠️ A List, not a collection expression: that makes a compiler-made read-only type
+            // whose indexer the grid's Cells[i] bindings cannot reach, and every cell came up blank.
+            SummaryRows.Add(new CompareSummaryRowVm(row.Title, row.Cells.Select(c => new CompareSummaryCellVm(c)).ToList()));
+        this.RaisePropertyChanged(nameof(HasSummary));
+    }
+
+    // ── The charts: cost over time, and time per park ────────────────────────
+
+    /// <summary>All lines together, or one of them; both charts follow it.</summary>
     public ObservableCollection<LabelledChoice> ChartChoices { get; } = [];
+
+    /// <summary>The chart list is being refilled: its selection moving is not a choice to redraw for.</summary>
+    private bool _refilling;
 
     private LabelledChoice? _chartChoice;
     public LabelledChoice? ChartChoice { get => _chartChoice; set => this.RaiseAndSetIfChanged(ref _chartChoice, value); }
@@ -271,76 +285,42 @@ public sealed class ParkComparisonViewModel : ReactiveObject
     private Axis[] _yAxes = [new Axis()];
     public Axis[] YAxes { get => _yAxes; private set => this.RaiseAndSetIfChanged(ref _yAxes, value); }
 
+    private ISeries[] _timeSeries = [];
+    public ISeries[] TimeSeries { get => _timeSeries; private set => this.RaiseAndSetIfChanged(ref _timeSeries, value); }
+
+    private Axis[] _timeXAxes = [new Axis()];
+    public Axis[] TimeXAxes { get => _timeXAxes; private set => this.RaiseAndSetIfChanged(ref _timeXAxes, value); }
+
+    private Axis[] _timeYAxes = [new Axis()];
+    public Axis[] TimeYAxes { get => _timeYAxes; private set => this.RaiseAndSetIfChanged(ref _timeYAxes, value); }
+
     public SolidColorPaint LegendPaint     => ChartPaint.Labels;
     public SolidColorPaint LegendBackPaint { get; } = new(Palette.Sk("SurfacePanel"));
 
     private string _chartNote = "";
     public string ChartNote { get => _chartNote; private set => this.RaiseAndSetIfChanged(ref _chartNote, value); }
 
-    public bool HasChart => Series.Length > 0;
+    public bool HasChart     => Series.Length > 0;
+    public bool HasTimeChart => TimeSeries.Length > 0;
 
-    /// <summary>
-    /// One line per park: the chosen item, or the whole list, costed with each day's indices.
-    /// Days are those the history has for any of the systems involved; a day a system's index
-    /// is missing carries its last known value forward.
-    /// </summary>
-    private void BuildChart()
+    private void BuildCharts()
     {
-        var typeFilter = ChartChoice is { Key.Length: > 0 } c ? int.Parse(c.Key) : (int?)null;
-        var byPark = _costs.Where(x => x.Buildable && (typeFilter is null || x.Job.TypeId == typeFilter))
-                           .GroupBy(x => (x.ParkId, x.ParkName, x.Slot))
-                           .OrderBy(g => g.Key.Slot)
-                           .ToList();
+        var line = ChartChoice is { Key.Length: > 0 } c ? int.Parse(c.Key) : (int?)null;
 
-        var keys = byPark.SelectMany(g => g).SelectMany(x => x.Terms).Select(t => (t.SystemId, t.Activity)).Distinct().ToList();
-        var days = keys.SelectMany(k => _indexHistory.TryGetValue(k, out var s) ? s.Keys : Enumerable.Empty<DateOnly>())
-                       .Distinct().OrderBy(d => d).ToList();
-
-        if (byPark.Count == 0 || days.Count == 0)
+        if (ParkCompareReport.CostChart(_costs, _indexHistory, line, () => ChartPaint.Labels, () => ChartPaint.Separators) is { } cost)
+            (Series, XAxes, YAxes, ChartNote) = (cost.Series, cost.XAxes, cost.YAxes, cost.Note);
+        else
         {
             Series    = [];
             ChartNote = _costs.Count == 0 ? "" : IndustryText.CompareNoHistory;
-            this.RaisePropertyChanged(nameof(HasChart));
-            return;
         }
 
-        var drawn = byPark.Where(g => g.Key.Slot < ChartPaint.MaxSeries).ToList();
-        Series = drawn.Select(g => (ISeries)new LineSeries<double?>
-        {
-            Name           = g.Key.ParkName,
-            Values         = days.Select(d => (double?)(double)g.Sum(x => ParkComparisonService.TotalAt(x,
-                                  (sys, act) => CostIndexHistoryService.On(_indexHistory.GetValueOrDefault((sys, act)), d)))).ToArray(),
-            GeometrySize   = 0,
-            LineSmoothness = 0,
-            Stroke         = ChartPaint.Series(g.Key.Slot),
-            Fill           = null,
-        }).ToArray();
+        if (ParkCompareReport.TimeChart(_costs, _lineLabels, line, () => ChartPaint.Labels, () => ChartPaint.Separators) is { } time)
+            (TimeSeries, TimeXAxes, TimeYAxes) = (time.Series, time.XAxes, time.YAxes);
+        else
+            TimeSeries = [];
 
-        XAxes =
-        [
-            new Axis
-            {
-                Labels          = days.Select(d => d.ToString("MM-dd")).ToArray(),
-                LabelsPaint     = ChartPaint.Labels,
-                TextSize        = 10,
-                MinStep         = Math.Max(1, days.Count / 10),
-                SeparatorsPaint = null,
-            },
-        ];
-        YAxes =
-        [
-            new Axis
-            {
-                Labeler         = v => MarketFmt.Isk(v),
-                LabelsPaint     = ChartPaint.Labels,
-                TextSize        = 10,
-                SeparatorsPaint = ChartPaint.Separators,
-            },
-        ];
-
-        var left = byPark.Count - drawn.Count;
-        ChartNote = string.Format(IndustryText.CompareChartNote, days[0], days[^1])
-                  + (left > 0 ? "  " + string.Format(IndustryText.CompareChartTooMany, ChartPaint.MaxSeries) : "");
         this.RaisePropertyChanged(nameof(HasChart));
+        this.RaisePropertyChanged(nameof(HasTimeChart));
     }
 }
