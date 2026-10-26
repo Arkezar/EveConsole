@@ -939,6 +939,18 @@ public class MainWindowViewModel : ReactiveObject
         if (navItem is not null) navItem.IsOpen = true;
     }
 
+    /// <summary>
+    /// Opens a tool if it is not open, without moving off the tab being worked in. A tool already
+    /// open is left where it is.
+    /// </summary>
+    public void OpenToolInBackground(string toolId)
+    {
+        if (AllTabs.Any(t => t.Id == toolId)) return;
+        var showing = Main.SelectedTab;
+        OpenTool(toolId);
+        if (showing is not null) Show(showing);
+    }
+
     /// <summary>Opens the Background Processes tool at the tab named — what a status-bar label does.
     /// The ask goes to the view model first, so a view already showing acts on it at once and one
     /// built by the open finds it waiting.</summary>
@@ -1270,6 +1282,17 @@ public class MainWindowViewModel : ReactiveObject
                                      appPrefs, indyStructureLink);
         Pi                     = piService;
         PlanetaryIndustryVm    = new PlanetaryIndustryViewModel(piService, errorLogger);
+        // Refresh in the PI tool reads the colonies from ESI on the poll's next pass, and the
+        // tool shows what that brings as soon as the layouts are in.
+        PlanetaryIndustryVm.AskEsi = () =>
+        {
+            pollingService.ResetCallTime("char.planets");
+            pollingService.ResetCallTime("char.planets.layouts");
+        };
+        pollingService.EndpointPolled += key =>
+        {
+            if (key == "char.planets.layouts") Dispatcher.UIThread.Post(PlanetaryIndustryVm.EsiPolled);
+        };
         // The Overview's PI alerts open the colony they are about, or the list for several.
         OverviewVm.Pi                     = piService;
         OverviewVm.NavigateToPi           = (character, planet) => { OpenTool("planetary_industry"); PlanetaryIndustryVm.ShowColony(character, planet); };

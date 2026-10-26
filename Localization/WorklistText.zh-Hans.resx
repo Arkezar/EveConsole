@@ -724,6 +724,18 @@
   <data name="Days" xml:space="preserve">
     <value>天</value>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>为即将空闲的蓝图保留材料，时限</value>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>当排在前面的任务只因蓝图正被运行中的任务占用而无法开始，且该任务在这么多小时内结束时，会为它保留其地点的材料，避免排在后面的任务先把材料用掉。设为 0 则关闭。</value>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>小时</value>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>已在该地点为它保留材料：蓝图将在 {0} 小时内空闲。</value>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>资产范围</value>
   </data>
@@ -1745,16 +1757,16 @@
     <value>材料不在 {0}：{1}</value>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>未拥有：{0}</value>
+    <value>无富余：{0}</value>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>{0} 内未拥有：{1}</value>
+    <value>{0} 内无富余：{1}</value>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>未拥有：{0}；在别处：{1}</value>
+    <value>无富余：{0}；在别处：{1}</value>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>{0} 内未拥有：{1}；在别处：{2}</value>
+    <value>{0} 内无富余：{1}；在别处：{2}</value>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0}，另有 {1} 种</value>
@@ -2461,9 +2473,6 @@
   <data name="PiHaulOutCollect" xml:space="preserve">
     <value>{0}：产出已占储藏一半或以上（预计）</value>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>这些数字是根据旧数据推算的：该殖民地已有一段时间未在游戏中打开。</value>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>向 {0} 运送原料</value>
   </data>
@@ -2484,12 +2493,6 @@
   </data>
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>当前为 {0} 级；指挥中心升级理论允许 {1} 级。升级可为采集点和工厂提供更多 CPU 和能量栅格。</value>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>在游戏中打开 {0}</value>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>其数据已有 {0}，预计数据已不可信。在游戏中打开该殖民地即可刷新。</value>
   </data>
   <data name="SafetyChooseByOther" xml:space="preserve">
     <value>在 {1:M月d日 HH:mm} 前为 {0:N0} 个资产安全包裹选择目的地</value>

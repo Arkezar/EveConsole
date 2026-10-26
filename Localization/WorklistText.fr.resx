@@ -724,6 +724,18 @@
   <data name="Days" xml:space="preserve">
     <value>jours</value>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>Réserver les matériaux pour un plan occupé libéré sous</value>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>Lorsqu'un travail classé devant ne peut démarrer que lorsque son plan sortira d'un travail en cours, et que ce travail se termine dans ce nombre d'heures, les matériaux de son site lui sont réservés pour que les travaux classés en dessous ne les consomment pas entre-temps. 0 désactive cette option.</value>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>heures</value>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>Ses matériaux sur le site lui sont réservés : le plan se libère dans moins de {0} heures.</value>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>Périmètre des biens</value>
   </data>
@@ -1757,16 +1769,16 @@
     <value>Matériaux absents de {0} : {1}</value>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>Non possédés : {0}</value>
+    <value>Rien de disponible : {0}</value>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>Non possédés dans {0} : {1}</value>
+    <value>Rien de disponible dans {0} : {1}</value>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>Non possédés : {0} ; ailleurs : {1}</value>
+    <value>Rien de disponible : {0} ; ailleurs : {1}</value>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>Non possédés dans {0} : {1} ; ailleurs : {2}</value>
+    <value>Rien de disponible dans {0} : {1} ; ailleurs : {2}</value>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0}, et {1} de plus</value>
@@ -2482,9 +2494,6 @@
   <data name="PiHaulOutCollect" xml:space="preserve">
     <value>{0} : stockage au moins à moitié plein de production (estimation)</value>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>Les chiffres sont estimés à partir de données anciennes : la colonie n'a pas été ouverte dans le jeu depuis un moment.</value>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>Apporter des intrants sur {0}</value>
   </data>
@@ -2514,12 +2523,6 @@
   </data>
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>Niveau {0} actuellement ; Améliorations de centre de commandement permet le niveau {1}. Plus de CPU et de réseau d'alimentation pour les têtes d'extracteur et les usines.</value>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>Ouvrir {0} dans le jeu</value>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>Ses données sont vieilles de {0} : ses estimations ne sont plus fiables. Ouvrir la colonie dans le jeu les actualise.</value>
   </data>
   <data name="SafetyChooseByOne" xml:space="preserve">
     <value>choisir une destination pour {0:N0} emballage de sécurité des biens avant le {1:d MMM HH:mm}</value>

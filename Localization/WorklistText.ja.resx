@@ -724,6 +724,18 @@
   <data name="Days" xml:space="preserve">
     <value>日</value>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>使用中の設計図が次の時間内に空く場合は材料を確保</value>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>上位のジョブが、実行中のジョブから設計図が戻るのを待つだけで開始できず、そのジョブがこの時間内に終わる場合、その場所の材料をそのジョブのために確保し、下位のジョブが先に使い切らないようにします。0 で無効になります。</value>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>時間</value>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>この場所の材料を確保しています。設計図は {0} 時間以内に空きます。</value>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>資産の対象範囲</value>
   </data>
@@ -1745,16 +1757,16 @@
     <value>{0}にない資源：{1}</value>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>未所有：{0}</value>
+    <value>余剰なし：{0}</value>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>{0}で未所有：{1}</value>
+    <value>{0}で余剰なし：{1}</value>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>未所有：{0}、別の場所：{1}</value>
+    <value>余剰なし：{0}、別の場所：{1}</value>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>{0}で未所有：{1}、別の場所：{2}</value>
+    <value>{0}で余剰なし：{1}、別の場所：{2}</value>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0}、ほか{1}件</value>
@@ -2461,9 +2473,6 @@
   <data name="PiHaulOutCollect" xml:space="preserve">
     <value>{0}：産出物で半分以上埋まっています（推定）</value>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>数値は古いデータからの推定です：このコロニーはしばらくゲーム内で開かれていません。</value>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>{0}へ投入資源を運ぶ</value>
   </data>
@@ -2484,12 +2493,6 @@
   </data>
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>現在はレベル{0}で、司令基地強化の上限は{1}です。エクストラクターの抽出ヘッドと工場に使えるCPUとパワーグリッドが増えます。</value>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>ゲーム内で{0}を開く</value>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>データが{0}前のもので、推定値はもう信頼できません。ゲーム内でコロニーを開くと更新されます。</value>
   </data>
   <data name="SafetyChooseByOther" xml:space="preserve">
     <value>{1:M月d日 HH:mm}までにアセットセーフティラップ{0:N0}個の配送先を選択</value>

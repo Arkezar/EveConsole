@@ -423,6 +423,50 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
                 _ = vm.ItemBrowserVm.NavigateToTypeAsync(typeId, name);
             });
 
+        // New: the queue emptied, these put in, the calculator shown. Add: put in after what is
+        // there, the calculator opened if it was not but the user left where they are.
+        vm.IndustryOpportunitiesVm.QueueForProduction = async (rows, replace) =>
+        {
+            var added = await vm.ProductionCalcVm.QueueItemsAsync([.. rows.Select(r => (r.TypeId, r.TypeNameEn))], replace);
+            if (replace) vm.OpenTool("prod_calc");
+            else         vm.OpenToolInBackground("prod_calc");
+            return added;
+        };
+
+        // "Add to Standing Buy Orders" from any tool's item menu: added at the station of the last
+        // standing order, the user left where they are and told so. Only with no order yet is a
+        // station asked for, on the first item.
+        void AddToBuyOrders(IReadOnlyList<int> typeIds) =>
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    var done = await vm.StandingBuyOrdersVm.AddItemsAsync(typeIds, first =>
+                        new StandingBuyOrderDialog(vm.StandingBuyOrdersVm.SearchService, first)
+                            .ShowDialog<EveConsole.Models.StandingBuyOrder?>(this));
+                    if (done is null) return;
+                    var where = EveConsole.Localization.SdeNames.Location(done.LocationId, done.LocationName);
+                    var parts = new List<string>();
+                    if (done.Added > 0)
+                        parts.Add(EveConsole.Localization.Plurals.Format(EveConsole.Localization.MarketText.ResourceManager,
+                            nameof(EveConsole.Localization.MarketText.ToastBuyOrdersAddedOther), done.Added, where));
+                    if (done.AlreadyThere > 0)
+                        parts.Add(EveConsole.Localization.Plurals.Format(EveConsole.Localization.MarketText.ResourceManager,
+                            nameof(EveConsole.Localization.MarketText.ToastBuyOrdersAlreadyOther), done.AlreadyThere, where));
+                    ShowToast(string.Join("\n", parts));
+                }
+                catch (Exception ex)
+                {
+                    ShowToast(string.Format(EveConsole.Localization.CommonText.ErrorWithMessage, ex.Message));
+                }
+            });
+        vm.InvLevelVm.AddToStandingBuyOrders              = AddToBuyOrders;
+        vm.MarketLevelVm.AddToStandingBuyOrders           = AddToBuyOrders;
+        vm.SalePostingVm.AddToStandingBuyOrders           = AddToBuyOrders;
+        vm.CorpActivityVm.AddToStandingBuyOrders          = AddToBuyOrders;
+        vm.IndustryOpportunitiesVm.AddToStandingBuyOrders = AddToBuyOrders;
+        vm.ItemBrowserVm.AddToStandingBuyOrders           = AddToBuyOrders;
+
         vm.MarketLevelVm.OpenInItemBrowser = (typeId, name) =>
             Dispatcher.UIThread.Post(() =>
             {
@@ -595,6 +639,20 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
     /// </summary>
     /// <summary>The UI scale menu, built on click for the same reason as the theme's: the tick
     /// has to show what is on now, and Settings can change it too.</summary>
+    private int _toastShown;
+
+    /// <summary>A message in the middle of the tools for a moment, then faded — for an action from
+    /// any tool with nothing else to show for it. A second while one shows starts the moment again.</summary>
+    public async void ShowToast(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return;
+        var mine = ++_toastShown;
+        AppToastText.Text = message;
+        AppToast.Opacity  = 1;
+        await Task.Delay(TimeSpan.FromSeconds(2.2));
+        if (mine == _toastShown) AppToast.Opacity = 0;
+    }
+
     private void OnUiScaleClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Control anchor) return;

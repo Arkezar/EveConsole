@@ -724,6 +724,18 @@
   <data name="Days" xml:space="preserve">
     <value>д</value>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>Резервировать материалы для занятого чертежа, который освободится в течение</value>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>Если работа выше в списке не может начаться только потому, что её чертёж занят в идущей работе, и та закончится в течение этого числа часов, материалы на её площадке резервируются для неё, чтобы работы ниже их не израсходовали. 0 отключает это.</value>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>ч</value>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>Материалы на площадке зарезервированы: чертёж освободится в течение {0} ч.</value>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>Охват имущества</value>
   </data>
@@ -1781,16 +1793,16 @@
     <value>Материалов нет в сооружении {0}: {1}</value>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>Нет в наличии: {0}</value>
+    <value>Нет свободных: {0}</value>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>Нет в наличии ({0}): {1}</value>
+    <value>Нет свободных ({0}): {1}</value>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>Нет в наличии: {0}; в другом месте: {1}</value>
+    <value>Нет свободных: {0}; в другом месте: {1}</value>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>Нет в наличии ({0}): {1}; в другом месте: {2}</value>
+    <value>Нет свободных ({0}): {1}; в другом месте: {2}</value>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0} и ещё {1}</value>
@@ -2524,9 +2536,6 @@
   <data name="PiHaulOutCollect" xml:space="preserve">
     <value>{0}: хранилище заполнено продукцией наполовину или больше (оценка)</value>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>Цифры рассчитаны по устаревшим данным: колонию давно не открывали в игре.</value>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>{0} — доставить материалы</value>
   </data>
@@ -2574,12 +2583,6 @@
   </data>
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>Сейчас уровень {0}; навык «Модификации наземной базы» позволяет {1}. Больше ЦПУ и энергосети для головок экстракторов и производственных комплексов.</value>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>{0} — открыть в игре</value>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>Возраст данных — {0}, и оценкам больше нельзя доверять. Если открыть колонию в игре, данные обновятся.</value>
   </data>
   <data name="SafetyChooseByOne" xml:space="preserve">
     <value>до {1:d MMM HH:mm} выберите место назначения для упаковок имущества ({0:N0})</value>

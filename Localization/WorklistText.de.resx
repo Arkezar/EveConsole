@@ -724,6 +724,18 @@
   <data name="Days" xml:space="preserve">
     <value>Tage</value>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>Material für belegte Blaupausen zurückhalten, die frei werden innerhalb von</value>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>Kann ein weiter oben eingeordneter Auftrag nur deshalb nicht starten, weil seine Blaupause in einem laufenden Auftrag steckt, und endet dieser innerhalb so vieler Stunden, werden die Materialien an seinem Standort für ihn zurückgehalten, damit weiter unten eingeordnete Aufträge sie nicht vorher verbrauchen. 0 schaltet das aus.</value>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>Stunden</value>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>Die Materialien am Standort sind für ihn zurückgehalten: Die Blaupause wird innerhalb von {0} Stunden frei.</value>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>Besitzumfang</value>
   </data>
@@ -1757,16 +1769,16 @@
     <value>Materialien nicht in {0}: {1}</value>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>Nicht vorhanden: {0}</value>
+    <value>Nichts übrig: {0}</value>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>Nicht vorhanden in {0}: {1}</value>
+    <value>Nichts übrig in {0}: {1}</value>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>Nicht vorhanden: {0}; anderswo: {1}</value>
+    <value>Nichts übrig: {0}; anderswo: {1}</value>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>Nicht vorhanden in {0}: {1}; anderswo: {2}</value>
+    <value>Nichts übrig in {0}: {1}; anderswo: {2}</value>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0} und {1} weitere</value>
@@ -2482,9 +2494,6 @@
   <data name="PiHaulOutCollect" xml:space="preserve">
     <value>{0}: mindestens halb voll mit Ertrag (geschätzt)</value>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>Die Werte sind aus alten Daten geschätzt: Die Kolonie wurde eine Weile nicht im Spiel geöffnet.</value>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>Material zu {0} bringen</value>
   </data>
@@ -2514,12 +2523,6 @@
   </data>
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>Jetzt Stufe {0}; Command Center Upgrades erlaubt {1}. Mehr CPU und Stromnetz für Extraktorköpfe und Fabriken.</value>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>{0} im Spiel öffnen</value>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>Die Daten der Kolonie sind {0} alt, daher ist ihren Schätzungen nicht mehr zu trauen. Das Öffnen der Kolonie im Spiel aktualisiert sie.</value>
   </data>
   <data name="SafetyChooseByOne" xml:space="preserve">
     <value>Ziel für {0:N0} Besitzsicherheit-Paket bis {1:d. MMM HH:mm} wählen</value>

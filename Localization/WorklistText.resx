@@ -964,6 +964,22 @@
     <value>days</value>
     <comment>Text in WorklistView.</comment>
   </data>
+  <data name="HoldForBusyPrint" xml:space="preserve">
+    <value>Hold materials for a busy blueprint freeing within</value>
+    <comment>Worklist settings, Industry: label before the hours box. The setting holds the materials of a job waiting only on a busy blueprint.</comment>
+  </data>
+  <data name="TipHoldForBusyPrint" xml:space="preserve">
+    <value>When a job ranked ahead can start only once its blueprint comes out of a running job, and that job ends within this many hours, the materials at its site are held for it, so jobs ranked below it do not use them up meanwhile. 0 turns this off.</value>
+    <comment>Worklist settings, Industry: tooltip on the busy-blueprint hours box.</comment>
+  </data>
+  <data name="Hours" xml:space="preserve">
+    <value>hours</value>
+    <comment>Unit after a box of hours.</comment>
+  </data>
+  <data name="JobHeldForBusyPrint" xml:space="preserve">
+    <value>Its materials at the site are held for it: the blueprint frees within {0} hours.</value>
+    <comment>Worklist job detail, after a job waiting on a busy blueprint. {0} is the setting, in hours.</comment>
+  </data>
   <data name="AssetScope" xml:space="preserve">
     <value>Asset Scope</value>
     <comment>Text in WorklistView.</comment>
@@ -2333,20 +2349,20 @@
     <comment>Why a Worklist job is blocked: materials are owned but elsewhere. {0} is the structure, {1} a list of the materials.</comment>
   </data>
   <data name="BlockedNotOwned" xml:space="preserve">
-    <value>Not owned: {0}</value>
-    <comment>Why a Worklist job is blocked: materials nobody owns. {0} is a list of them.</comment>
+    <value>None to spare: {0}</value>
+    <comment>Why a Worklist job is blocked: materials nobody owns. {0} is a list of them. "None to spare": not owned, or owned only where other work still needs it.</comment>
   </data>
   <data name="BlockedNotOwnedIn" xml:space="preserve">
-    <value>Not owned in {0}: {1}</value>
-    <comment>Why a Worklist job is blocked: materials nobody owns within the stock scope. {0} is the region or system, {1} a list of the materials.</comment>
+    <value>None to spare in {0}: {1}</value>
+    <comment>Why a Worklist job is blocked: materials nobody owns within the stock scope. {0} is the region or system, {1} a list of the materials. "None to spare": not owned, or owned only where other work still needs it.</comment>
   </data>
   <data name="BlockedNotOwnedElsewhere" xml:space="preserve">
-    <value>Not owned: {0}; elsewhere: {1}</value>
-    <comment>Why a Worklist job is blocked. {0} lists materials nobody owns, {1} materials owned but at another station.</comment>
+    <value>None to spare: {0}; elsewhere: {1}</value>
+    <comment>Why a Worklist job is blocked. {0} lists materials nobody owns, {1} materials owned but at another station. "None to spare": not owned, or owned only where other work still needs it.</comment>
   </data>
   <data name="BlockedNotOwnedInElsewhere" xml:space="preserve">
-    <value>Not owned in {0}: {1}; elsewhere: {2}</value>
-    <comment>Why a Worklist job is blocked. {0} is the region or system stock is counted in, {1} lists materials nobody owns there, {2} materials owned but at another station.</comment>
+    <value>None to spare in {0}: {1}; elsewhere: {2}</value>
+    <comment>Why a Worklist job is blocked. {0} is the region or system stock is counted in, {1} lists materials nobody owns there, {2} materials owned but at another station. "None to spare": not owned, or owned only where other work still needs it.</comment>
   </data>
   <data name="NamesAndMore" xml:space="preserve">
     <value>{0}, and {1} more</value>
@@ -3300,10 +3316,6 @@
     <value>{0}: half full of output or more (estimated)</value>
     <comment>Worklist task detail, one per planet. {0} is the planet.</comment>
   </data>
-  <data name="PiStaleNote" xml:space="preserve">
-    <value>The figures are estimated from data that is old: the colony has not been opened in the game for a while.</value>
-    <comment>Worklist task detail, added at the end when a colony's data is older than the setting.</comment>
-  </data>
   <data name="PiHaulInTitle" xml:space="preserve">
     <value>Bring input to {0}</value>
     <comment>Worklist task: haul a factory planet's input to it. {0} is the planet.</comment>
@@ -3343,14 +3355,6 @@
   <data name="PiUpgradeDetail" xml:space="preserve">
     <value>Level {0} now; Command Center Upgrades allows {1}. More CPU and powergrid for extractor heads and factories.</value>
     <comment>Worklist task detail. {0} the level now, {1} the highest the skill allows. "Command Center Upgrades" is a skill: use the game's name.</comment>
-  </data>
-  <data name="PiOpenTitle" xml:space="preserve">
-    <value>Open {0} in the game</value>
-    <comment>Worklist task: open a colony in the game so its data is read again. {0} is the planet.</comment>
-  </data>
-  <data name="PiOpenDetail" xml:space="preserve">
-    <value>Its data is {0} old, so its estimates can no longer be trusted. Opening the colony in the game refreshes it.</value>
-    <comment>Worklist task detail. {0} is a length of time.</comment>
   </data>
   <data name="SafetyChooseByOne" xml:space="preserve">
     <value>choose a destination for {0:N0} asset safety wrap by {1:d MMM HH:mm}</value>
