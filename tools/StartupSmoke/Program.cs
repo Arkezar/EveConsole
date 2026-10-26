@@ -55,10 +55,51 @@ Console.WriteLine($"data folder   {AppConfig.AppDataDir}");
 }
 
 // ── The app itself ───────────────────────────────────────────────────────────
-void Check()
+async void Check()
 {
     try
     {
+        // ── Sound, through VLC ───────────────────────────────────────────────
+        // VLC has to load where the app carries it (Windows, and macOS from the Mac package);
+        // on Linux it is the system's, which CI does not install, so there it is only reported.
+        // A chime is then played, and what happened reported: a CI runner may have no audio
+        // device to play to, so that part does not decide the verdict.
+        Console.WriteLine($"sound         VLC {(AlarmSoundService.IsAvailable ? "loaded" : "NOT loaded: " + AlarmSoundService.InitError)}");
+        if (!AlarmSoundService.IsAvailable && (OperatingSystem.IsMacOS() || OperatingSystem.IsWindows()))
+            failures.Add($"VLC did not load: {AlarmSoundService.InitError}");
+        if (AlarmSoundService.IsAvailable)
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var started = DateTime.UtcNow;
+            await new AlarmSoundService().PlayAsync(AlarmSoundService.DefaultKey, 30, cts.Token);
+            Console.WriteLine($"              chime: {(AlarmSoundService.LastError ?? "played")} ({(DateTime.UtcNow - started).TotalSeconds:0.0}s)");
+        }
+
+        // ── The microphone library, PortAudio ────────────────────────────────
+        // It has to load wherever the app carries it (all three platforms). A runner has no
+        // microphone, so the device count is only reported.
+        try
+        {
+            PortAudioSharp.PortAudio.Initialize();
+            var inputs = Enumerable.Range(0, PortAudioSharp.PortAudio.DeviceCount)
+                                   .Count(i => PortAudioSharp.PortAudio.GetDeviceInfo(i).maxInputChannels > 0);
+            Console.WriteLine($"microphone    PortAudio loaded, {inputs} input device(s)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"microphone    PortAudio NOT loaded: {ex.Message}");
+            failures.Add($"PortAudio did not load: {ex.Message}");
+        }
+
+        // ── The push-to-talk key ─────────────────────────────────────────────
+        // Reported only: whether a headless process may take a global key is the platform's
+        // call (Linux CI has no X server at all), and nothing is pressed here.
+        using (var hotkey = new GlobalHotkeyService())
+        {
+            hotkey.Configure(0x7C);   // F13
+            Console.WriteLine($"hotkey        F13 {(hotkey.IsInstalled ? "registered" : "not registered" + (hotkey.MacError is { } why ? ": " + why : ""))}");
+        }
+
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime life)
         {
             failures.Add("no desktop lifetime");
