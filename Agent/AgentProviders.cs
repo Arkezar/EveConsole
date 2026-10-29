@@ -9,6 +9,7 @@ public sealed class AgentProviders
 {
     public const string Claude = "claude";
     public const string OpenAi = "openai";
+    public const string Codex = "openai-codex";
     public const string Local  = "local";
 
     public static AgentProviders Default { get; } = new([
@@ -17,6 +18,8 @@ public sealed class AgentProviders
                 BaseUrl = "https://api.anthropic.com/v1/", KeyUrl = "https://console.anthropic.com/settings/keys" },
         new() { Id = OpenAi, Name = OpenAiCompatibleProvider.OpenAiName, BaseUrl = "https://api.openai.com/v1/",
                 FilterOpenAiModels = true, KeyUrl = "https://platform.openai.com/api-keys" },
+        new() { Id = Codex, Name = CodexProvider.ServiceName, Protocol = AgentProtocol.CodexResponses,
+                BaseUrl = CodexProvider.BaseUrl },
         // Go translates text models to Chat Completions; its model list is protocol-neutral.
         new() { Id = "opencode-go", Name = "OpenCode Go", BaseUrl = "https://opencode.ai/inference/go/openai/v1/",
                 ModelsPath = "../../v1/models", SessionHeader = "x-opencode-session", KeyUrl = "https://opencode.ai/console" },
@@ -44,6 +47,8 @@ public sealed class AgentProviders
         var definition = Find(model.ProviderId);
         if (definition is null) return "";
         if (definition.IsLocal) return (model.Endpoint ?? "").Trim();
+        // Subscription credentials must never be sent to a configurable host.
+        if (definition.UsesChatGpt) return CodexProvider.BaseUrl;
         var endpoint = settings.ConfigurationFor(model.ProviderId).Endpoint.Trim();
         return endpoint.Length > 0 ? endpoint : definition.BaseUrl;
     }
@@ -56,6 +61,8 @@ public sealed class AgentProviders
         if (requireModel && model.ModelName.Length == 0) return SettingsText.AgentTestChooseModel;
         if (definition.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ConfigurationFor(model.ProviderId).ApiKey))
             return string.Format(SettingsText.ProviderNeedKey, definition.Name);
+        if (definition.UsesChatGpt && !CodexAccount.IsSignedIn(settings.ConfigurationFor(model.ProviderId).AccountId))
+            return SettingsText.CodexNeedSignIn;
         var endpoint = Endpoint(model, settings);
         if (endpoint.Length == 0) return SettingsText.ModelNeedServerAddress;
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")
@@ -71,6 +78,7 @@ public sealed class AgentProviders
         var configuration = settings.ConfigurationFor(model.ProviderId);
         return definition.Protocol switch
         {
+            AgentProtocol.CodexResponses => new CodexProvider(configuration.AccountId, model.ModelName),
             AgentProtocol.AnthropicMessages => new ClaudeProvider(configuration.ApiKey.Trim(), model.ModelName, configuration.CacheTtl, Endpoint(model, settings), definition.Name),
             _ when definition.IsLocal => OpenAiCompatibleProvider.Local(model.Endpoint, model.ModelName, model.Think),
             _ => OpenAiCompatibleProvider.Compatible(definition.Name, Endpoint(model, settings), configuration.ApiKey.Trim(), model.ModelName,
@@ -86,6 +94,7 @@ public sealed class AgentProviders
         var key = settings.ConfigurationFor(model.ProviderId).ApiKey.Trim();
         return definition.Protocol switch
         {
+            AgentProtocol.CodexResponses => CodexProvider.ListModelsAsync(settings.ConfigurationFor(model.ProviderId).AccountId, ct),
             AgentProtocol.AnthropicMessages => ClaudeProvider.ListModelsAsync(key, ct, Endpoint(model, settings), definition.Name),
             _ when definition.IsLocal => OpenAiCompatibleProvider.ListLocalModelsAsync(model.Endpoint, ct),
             _ => OpenAiCompatibleProvider.ListCompatibleModelsAsync(Endpoint(model, settings), key, definition.Name,

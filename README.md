@@ -222,6 +222,14 @@ Keep in mind this application is still very green.  You are free to play around 
 Model profiles for the same provider share one provider configuration. Local model profiles can
 still use different servers. OpenAI models, voices and transcription share one API key.
 
+For a ChatGPT subscription, select **OpenAI Codex — ChatGPT subscription** in the AI Agent model settings.
+Click **Sign in with ChatGPT**, open the sign-in link, and enter the displayed code.
+Then select a model from the service's list.
+
+Codex uses your ChatGPT limits. It does not use your OpenAI API key or change speech settings.
+Login tokens stay in this app profile on this computer. System secret protection is used when available.
+Without it, the app stores tokens in a private local file.
+
 Provider configurations in `agent-settings.json` now use stable provider IDs. Existing settings
 migrate automatically, with compatibility fields for Claude, OpenAI and Local.
 **Before a downgrade, back up `agent-settings.json`. Older builds can discard provider configurations

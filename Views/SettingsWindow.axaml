@@ -1974,6 +1974,26 @@
                                              FontSize="10" Padding="0" HorizontalAlignment="Left" />
                           </StackPanel>
 
+                          <StackPanel IsVisible="{Binding ShowCodex}" Spacing="8">
+                            <TextBlock Text="{x:Static loc:SettingsText.CodexHelp}" TextWrapping="Wrap" FontSize="11" />
+                            <TextBlock Text="{x:Static loc:SettingsText.CodexStorageHelp}" TextWrapping="Wrap"
+                                       FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                            <Button Content="{x:Static loc:SettingsText.CodexSignIn}" Command="{Binding Owner.CodexSignInCommand}"
+                                    IsVisible="{Binding !Owner.CodexSignedIn}" IsEnabled="{Binding !Owner.CodexSigningIn}"
+                                    HorizontalAlignment="Left" />
+                            <Button Content="{x:Static loc:SettingsText.CodexSignOut}" Command="{Binding Owner.CodexSignOutCommand}"
+                                    IsVisible="{Binding Owner.CodexSignedIn}" IsEnabled="{Binding !Owner.CodexSigningIn}"
+                                    HorizontalAlignment="Left" />
+                            <StackPanel IsVisible="{Binding Owner.CodexSigningIn}" Spacing="8">
+                              <HyperlinkButton Content="{x:Static loc:SettingsText.CodexOpenLogin}" NavigateUri="{Binding Owner.CodexVerificationUrl}"
+                                               HorizontalAlignment="Left" />
+                              <SelectableTextBlock Text="{Binding Owner.CodexCode}" FontSize="18" />
+                              <Button Content="{x:Static loc:CommonText.Cancel}" Command="{Binding Owner.CodexCancelCommand}"
+                                      HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Owner.CodexStatus}" TextWrapping="Wrap" FontSize="11" />
+                          </StackPanel>
+
                           <StackPanel IsVisible="{Binding ShowEndpoint}" Spacing="8">
                             <TextBlock Text="{x:Static loc:SettingsText.ServerAddress}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
                             <TextBox Text="{Binding Endpoint}" Watermark="{Binding EndpointWatermark}" />

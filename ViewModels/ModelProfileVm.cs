@@ -115,7 +115,7 @@ public sealed class ModelProfileVm : ModelChoice, IDisposable
             if (value == _providerId) return;
             this.RaiseAndSetIfChanged(ref _providerId, value);
             foreach (var property in new[] { nameof(SelectedService), nameof(ShowApiKey),
-                nameof(ShowEndpoint), nameof(ShowThink), nameof(ShowClaude), nameof(ApiKeyLabel), nameof(ApiKeyUrl),
+                nameof(ShowEndpoint), nameof(ShowCodex), nameof(ShowThink), nameof(ShowClaude), nameof(ApiKeyLabel), nameof(ApiKeyUrl),
                 nameof(EndpointWatermark), nameof(ModelWatermark), nameof(ModelHelp) })
                 this.RaisePropertyChanged(property);
             RefreshProviderSettings();
@@ -126,7 +126,8 @@ public sealed class ModelProfileVm : ModelChoice, IDisposable
     }
 
     public bool ShowApiKey => Definition?.RequiresApiKey == true;
-    public bool ShowEndpoint => Definition is not null;
+    public bool ShowEndpoint => Definition is { UsesChatGpt: false };
+    public bool ShowCodex => Definition?.UsesChatGpt == true;
     public bool ShowThink => Definition?.IsLocal == true;
     public bool ShowClaude => _providerId == AgentProviders.Claude;
     public string ApiKeyLabel => string.Format(SettingsText.ProviderKeyLabel, Definition?.Name ?? _providerId);
@@ -194,7 +195,7 @@ public sealed class ModelProfileVm : ModelChoice, IDisposable
         var model = ToProfile();
         var settings = _owner.ProviderSettings.Clone();
         var configuration = settings.ConfigurationFor(_providerId);
-        var question = $"{_providerId}|{HashCode.Combine(_owner.Providers.Endpoint(model, settings), configuration.ApiKey, configuration.CacheTtl)}";
+        var question = $"{_providerId}|{HashCode.Combine(_owner.Providers.Endpoint(model, settings), configuration.ApiKey, configuration.CacheTtl, configuration.AccountId)}";
         return _owner.Providers.Validate(model, settings, requireModel: false) is { } why
             ? ServiceListChoice.Source.Unavailable(why, question)
             : new(null, question, ct => _owner.Providers.ListModelsAsync(model, settings, ct));

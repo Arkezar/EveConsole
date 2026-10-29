@@ -1,4 +1,5 @@
 using EveConsole.Agent;
+using EveConsole.Agent.Providers;
 using EveConsole.Services;
 using ReactiveUI;
 using System.Reactive.Linq;
@@ -38,6 +39,74 @@ public sealed class AgentSettingsViewModel : ReactiveObject
             if (_selectedVoice?.Provider == TtsProvider.OpenAi) _selectedVoice.KeyChanged();
             if (_speechInputProvider == SpeechInputKind.OpenAiWhisper) _relistTranscription.OnNext(System.Reactive.Unit.Default);
         }
+    }
+
+    // One login is shared by every Codex model, but not by OpenAI API-key speech services.
+    private CancellationTokenSource? _codexLogin;
+    public ICommand CodexSignInCommand { get; }
+    public ICommand CodexCancelCommand { get; }
+    public ICommand CodexSignOutCommand { get; }
+    public bool CodexSignedIn => CodexAccount.IsSignedIn(_providerSettings.ConfigurationFor(AgentProviders.Codex).AccountId);
+    public bool CodexSigningIn => _codexLogin is not null;
+    public string CodexVerificationUrl => CodexAccount.VerificationUrl;
+    private string _codexStatus = "";
+    public string CodexStatus { get => _codexStatus; private set => this.RaiseAndSetIfChanged(ref _codexStatus, value); }
+    private string _codexCode = "";
+    public string CodexCode { get => _codexCode; private set => this.RaiseAndSetIfChanged(ref _codexCode, value); }
+
+    private async Task SignInCodexAsync()
+    {
+        if (_codexLogin is not null || CodexSignedIn) return;
+        using var login = new CancellationTokenSource();
+        _codexLogin = login;
+        this.RaisePropertyChanged(nameof(CodexSigningIn));
+        CodexStatus = SettingsText.CodexStarting;
+        try
+        {
+            // A copied profile can retain an account id without usable tokens. Clear that stale
+            // setup first so signing into the same account also rebuilds runtime roles.
+            _providerSettings.ConfigurationFor(AgentProviders.Codex).AccountId = "";
+            CodexChanged();
+            await FlushAsync();
+            var device = await CodexAccount.BeginAsync(login.Token);
+            CodexCode = device.Code;
+            CodexStatus = SettingsText.CodexEnterCode;
+            var accountId = await CodexAccount.CompleteAsync(device, login.Token);
+            _providerSettings.ConfigurationFor(AgentProviders.Codex).AccountId = accountId;
+            CodexStatus = SettingsText.CodexSignedIn;
+            CodexChanged();
+            await FlushAsync();
+        }
+        catch (OperationCanceledException) { CodexStatus = SettingsText.CodexLoginCancelled; }
+        catch (Exception ex) { CodexStatus = string.Format(CommonText.ErrorWithMessage, ex.Message); }
+        finally
+        {
+            CodexCode = "";
+            _codexLogin = null;
+            this.RaisePropertyChanged(nameof(CodexSigningIn));
+        }
+    }
+
+    private async Task SignOutCodexAsync()
+    {
+        try
+        {
+            await Task.Run(() => CodexAccount.SignOutAsync());
+            _providerSettings.ConfigurationFor(AgentProviders.Codex).AccountId = "";
+            CodexStatus = SettingsText.CodexNeedSignIn;
+            CodexChanged();
+            await FlushAsync();
+        }
+        catch (Exception ex) { CodexStatus = string.Format(CommonText.ErrorWithMessage, ex.Message); }
+    }
+
+    private void CodexChanged()
+    {
+        this.RaisePropertyChanged(nameof(CodexSignedIn));
+        ProviderEdited(AgentProviders.Codex);
+        foreach (var model in Models.Where(m => m.ProviderId == AgentProviders.Codex))
+            _ = model.ModelList.LoadAsync(force: true);
+        _autoSave.Changed();
     }
 
     // ── personalisation ───────────────────────────────────────────────────────
@@ -884,6 +953,9 @@ public sealed class AgentSettingsViewModel : ReactiveObject
         RemoveVoiceCommand         = ReactiveCommand.Create(RemoveVoice);
         MoveVoiceUpCommand         = ReactiveCommand.Create(() => MoveVoice(-1));
         MoveVoiceDownCommand       = ReactiveCommand.Create(() => MoveVoice(+1));
+        CodexSignInCommand         = ReactiveCommand.CreateFromTask(SignInCodexAsync);
+        CodexCancelCommand         = ReactiveCommand.Create(() => _codexLogin?.Cancel());
+        CodexSignOutCommand        = ReactiveCommand.CreateFromTask(SignOutCodexAsync);
         AddModelCommand            = ReactiveCommand.Create(AddModel);
         RemoveModelCommand         = ReactiveCommand.Create(RemoveModel);
         ResetHandOffWhenCommand    = ReactiveCommand.Create(() =>
@@ -1008,6 +1080,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     /// </summary>
     public async Task CloseAsync()
     {
+        _codexLogin?.Cancel();
         await _autoSave.FlushAsync();
         _serviceEcho.Dispose();
         foreach (var model in Models) model.Dispose();

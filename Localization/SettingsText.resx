@@ -4,6 +4,23 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="CodexProviderChoice" xml:space="preserve"><value>OpenAI Codex — ChatGPT subscription</value></data>
+  <data name="CodexHelp" xml:space="preserve"><value>Sign in with ChatGPT to use Codex through your subscription. Usage counts against your ChatGPT limits, not your OpenAI API balance. This login is shared by all Codex models in this app profile.</value></data>
+  <data name="CodexStorageHelp" xml:space="preserve"><value>Login tokens stay on this computer, separate from agent settings. They use system secret protection when available. Otherwise, a private local file holds them. Signing out removes this app's saved login, but does not revoke the session at OpenAI.</value></data>
+  <data name="CodexSignIn" xml:space="preserve"><value>Sign in with ChatGPT</value></data>
+  <data name="CodexSignOut" xml:space="preserve"><value>Sign out of ChatGPT</value></data>
+  <data name="CodexOpenLogin" xml:space="preserve"><value>Open ChatGPT sign-in</value></data>
+  <data name="CodexStarting" xml:space="preserve"><value>Requesting a sign-in code…</value></data>
+  <data name="CodexEnterCode" xml:space="preserve"><value>Open the sign-in link. Enter the code shown here. It expires in 15 minutes. Only use a code requested here. You may need to enable device-code login in your ChatGPT security settings.</value></data>
+  <data name="CodexSignedIn" xml:space="preserve"><value>Signed in with ChatGPT.</value></data>
+  <data name="CodexNeedSignIn" xml:space="preserve"><value>Sign in with ChatGPT to use OpenAI Codex.</value></data>
+  <data name="CodexLoginCancelled" xml:space="preserve"><value>Sign-in was cancelled or the code expired. Sign in again to get a new code.</value></data>
+  <data name="CodexAuthFailed" xml:space="preserve"><value>ChatGPT sign-in or token refresh failed (HTTP {0}). Check device-code login permissions, or sign in again.</value><comment>{0} is an HTTP status code. Do not display authentication response bodies.</comment></data>
+  <data name="CodexRequestFailed" xml:space="preserve"><value>OpenAI Codex returned HTTP {0}. For 401 or 403, sign in again and check subscription access. For 429, wait for your ChatGPT usage limit to reset.</value><comment>{0} is an HTTP status code.</comment></data>
+  <data name="CodexResponseFailed" xml:space="preserve"><value>OpenAI Codex could not complete this response. Try again, or check your ChatGPT subscription limits.</value></data>
+  <data name="CodexAnswerTooLong" xml:space="preserve"><value>(I ran out of room before I could finish that answer, so this round's tool calls did not run. Ask me to continue.)</value></data>
+  <data name="CodexBudgetExhausted" xml:space="preserve"><value>(I ran out of steps before I could finish. Ask again to pick up from what I found.)</value></data>
+  <data name="CodexStreamInterrupted" xml:space="preserve"><value>OpenAI Codex disconnected before completing the response.</value></data>
   <data name="ProviderKeyLabel" xml:space="preserve">
     <value>{0} API key</value>
     <comment>{0} is a provider's name.</comment>

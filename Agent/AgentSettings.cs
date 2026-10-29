@@ -65,6 +65,7 @@ public sealed class AgentSettings
             configuration.ApiKey ??= "";
             configuration.Endpoint ??= "";
             configuration.CacheTtl ??= "5m";
+            configuration.AccountId ??= "";
         }
         ProviderConfigurations.TryAdd(AgentProviders.Claude, new() { ApiKey = _legacyClaudeKey ?? "", CacheTtl = _legacyCacheTtl ?? "5m" });
         ProviderConfigurations.TryAdd(AgentProviders.OpenAi, new() { ApiKey = _legacyOpenAiKey ?? "" });
