@@ -7,7 +7,7 @@ Automated checks pass. Live discovery returns eight selectable models with the e
 | Command | Result |
 | --- | --- |
 | `dotnet run --project tools/CodexProviderCheck` | 12 scenarios pass |
-| `dotnet run --project tools/AgentProviderCheck` | 19 regression scenarios pass |
+| `dotnet run --project tools/AgentProviderCheck` | 21 regression scenarios pass |
 | `dotnet run --project tools/AgentStreamCheck` | Existing provider wire-format and UI-thread checks pass |
 | `dotnet run --project tools/LocCheck` | No translation errors |
 | `dotnet build -c Release` | Zero warnings and errors |
@@ -58,10 +58,36 @@ The temporary probe printed no credentials or account identifiers. It made no in
 Provider regressions, streaming checks, and all three Release builds passed afterward.
 All four existing build folders contain the corrected catalog version.
 
+## Device-code alignment regression
+
+The compiled Settings view reproduced a nine-pixel offset between the login link text and the device code.
+Fluent's default hyperlink padding and border caused the offset.
+Removing that inset aligned both left edges at zero pixels.
+
+The regression check renders the actual controls from `SettingsWindow` at widths of 320 and 520 pixels.
+It failed before the correction and passed afterward. A separate 440-pixel probe also measured zero offset.
+All 20 provider checks, 12 Codex checks, localization checks, and three Release builds passed.
+No authentication or model-discovery behavior changed.
+
+## Configured-model switching regression
+
+The Settings editor reused its controls when switching configured profiles.
+During rebinding, a dropdown wrote the previous profile's provider into the selected profile.
+That change cleared its model and selected the first catalog entry.
+Switching profiles with the same provider also caused a temporary model overwrite.
+
+The editor now builds new controls for each selected profile instead of recycling them.
+The headless check uses the compiled Settings editor and repeatedly switches between profiles with the same and different providers.
+It checks the displayed provider and model, unchanged saved choices, and the absence of temporary provider or model edits.
+The existing check for deliberate provider changes still passes.
+
+All 21 provider checks, 12 Codex checks, streaming checks, localization checks, and three Release builds passed.
+Existing overwritten model choices are not recovered by this fix.
+
 ## Limits
 
 - No new ChatGPT login or paid inference request was made. Live discovery used the existing saved login.
 - The Codex service protocol and account entitlements can change.
 - English resource entries fall back to English in other interface languages.
-- The LSP probe returned no server answer for nine changed C# files. Compiler builds passed instead.
+- LSP checks remain unconfirmed: no C# server answered, and XAML has no configured server. Compiler builds passed instead.
 - Offline test credentials use the private-file fallback. Live discovery read the existing protected login, but did not test platform storage writes.

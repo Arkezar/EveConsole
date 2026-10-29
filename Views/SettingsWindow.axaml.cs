@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using EveConsole.ViewModels;
@@ -18,6 +19,11 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+
+        // Rebinding live dropdowns can write the outgoing profile's selections into the incoming one.
+        var modelTemplate = ModelProfileEditor.ContentTemplate!;
+        ModelProfileEditor.ContentTemplate = new FuncDataTemplate<ModelProfileVm>(
+            (model, _) => modelTemplate.Build(model), supportsRecycling: false);
 
         // Every tab saves as it is changed, and text once typing pauses. Leaving a box saves it
         // now: a pause is no promise the next thing done is not closing the window, or reading

@@ -18,6 +18,8 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Headless;
 using Avalonia.Threading;
+using Avalonia.Themes.Fluent;
+using Avalonia.VisualTree;
 
 var profileDirectory = Directory.CreateTempSubdirectory("eve-provider-check-").FullName;
 AppConfig.UseProfile(profileDirectory);
@@ -388,6 +390,7 @@ Check("Go routing follows conversation identity, not a model instance or request
 Check("the Settings ComboBox can switch from Claude or an unavailable provider and persist every choice", () =>
 {
     AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).SetupWithoutStarting();
+    Application.Current!.Styles.Add(new FluentTheme());
     foreach (var initialId in new[] { "claude", "future-ui-provider" })
     {
         var settings = Read("""{"Models":[{"Id":"talk","ProviderId":"claude","Model":"chosen"}],"ConversationRole":{"ModelId":"talk"}}""");
@@ -420,6 +423,95 @@ Check("the Settings ComboBox can switch from Claude or an unavailable provider a
             }
             finally { vm.CloseAsync().GetAwaiter().GetResult(); }
         });
+    }
+});
+
+Check("switching configured profiles preserves their providers and selected models", () =>
+{
+    foreach (var secondProvider in new[] { "test-compatible", "opencode-go" })
+    {
+        var settings = Read("""
+            {"Models":[{"Id":"first","ProviderId":"test-compatible","Model":"alpha"},{"Id":"second","ProviderId":"test-compatible","Model":"beta"}],
+             "ConversationRole":{"ModelId":"first"},"ProviderConfigurations":{"test-compatible":{"ApiKey":"test-key"},"opencode-go":{"ApiKey":"go-key"}}}
+            """);
+        settings.Models[1].ProviderId = secondProvider;
+        File.WriteAllText(Path.Combine(profileDirectory, "agent-settings.json"), JsonSerializer.Serialize(settings));
+        using var handler = new CompatibleHttp { ModelIds = ["alpha", "beta"] };
+        using var client = new HttpClient(handler);
+        WithHttp(typeof(OpenAiCompatibleProvider), client, () =>
+        {
+            var service = new AgentService(providers);
+            using var roles = service.Roles;
+            var vm = new AgentSettingsViewModel(service);
+            var settingsWindow = new EveConsole.Views.SettingsWindow();
+            var editor = settingsWindow.FindControl<ContentControl>("ModelProfileEditor")!;
+            ((Border)editor.Parent!).Child = null;
+            editor.DataContext = vm;
+            var host = new Window { Width = 600, Height = 700, Content = editor };
+            try
+            {
+                foreach (var model in vm.Models) model.ModelList.LoadAsync(force: true).GetAwaiter().GetResult();
+                host.Show();
+                Dispatcher.UIThread.RunJobs();
+                var changes = new List<string>();
+                foreach (var model in vm.Models)
+                    model.PropertyChanged += (_, e) =>
+                    {
+                        if (e.PropertyName is nameof(ModelProfileVm.ProviderId) or nameof(ModelProfileVm.Model))
+                            changes.Add($"{model.Id}:{e.PropertyName}={model.ProviderId}/{model.Model}");
+                    };
+                foreach (var index in new[] { 1, 0, 1, 0 })
+                {
+                    vm.SelectedModel = vm.Models[index];
+                    Dispatcher.UIThread.RunJobs();
+                    var providerCombo = editor.GetVisualDescendants().OfType<ComboBox>()
+                        .Single(c => c.Items.OfType<ModelProfileVm.ServiceOption>().Any());
+                    Require(ReferenceEquals(providerCombo.DataContext, vm.SelectedModel)
+                            && (providerCombo.SelectedItem as ModelProfileVm.ServiceOption)?.Id == vm.SelectedModel!.ProviderId,
+                        "The editor did not display the selected profile's provider.");
+                    var modelCombo = editor.GetVisualDescendants().OfType<ComboBox>()
+                        .Single(c => c.Items.OfType<ModelListing>().Any());
+                    Require((modelCombo.SelectedItem as ModelListing)?.Id == vm.SelectedModel!.Model,
+                        "The editor did not display the selected profile's model.");
+                    Require(vm.Models[0].Model == "alpha" && vm.Models[1].Model == "beta",
+                        $"Switching to {index} changed saved model choices to {vm.Models[0].Model} / {vm.Models[1].Model} ({secondProvider}).");
+                    Require(vm.Models[0].ProviderId == "test-compatible" && vm.Models[1].ProviderId == secondProvider,
+                        "Switching configured profiles changed their providers.");
+                    Require(changes.Count == 0, $"Viewing another profile must not edit provider or model settings: {string.Join("; ", changes)}");
+                    vm.FlushAsync().GetAwaiter().GetResult();
+                    Require(service.Settings.Models[0].Model == "alpha" && service.Settings.Models[1].Model == "beta",
+                        "Switching profiles persisted a changed model choice.");
+                }
+            }
+            finally { host.Close(); settingsWindow.Close(); vm.CloseAsync().GetAwaiter().GetResult(); }
+        });
+    }
+});
+
+Check("Codex device code aligns with the login link at narrow and wide widths", () =>
+{
+    foreach (var width in new[] { 320, 520 })
+    {
+        var settingsWindow = new EveConsole.Views.SettingsWindow();
+        var editor = settingsWindow.FindControl<ContentControl>("ModelProfileEditor")!;
+        var content = editor.ContentTemplate!.Build(null)!;
+        var code = content.GetVisualDescendants().OfType<SelectableTextBlock>().Single(c => c.Name == "CodexDeviceCode");
+        var link = content.GetVisualDescendants().OfType<HyperlinkButton>().Single(c => c.Name == "CodexLoginLink");
+        var panel = (StackPanel)code.Parent!;
+        ((Panel)panel.Parent!).Children.Remove(panel);
+        panel.IsVisible = true;
+        code.Text = "TEST-CODE";
+        var host = new Window { Width = width, Height = 180, Content = panel };
+        try
+        {
+            host.Show();
+            Dispatcher.UIThread.RunJobs();
+            var linkText = link.GetVisualDescendants().OfType<TextBlock>().Single();
+            var linkX = linkText.TranslatePoint(default, panel)!.Value.X;
+            var codeX = code.TranslatePoint(default, panel)!.Value.X;
+            Require(Math.Abs(linkX - codeX) < 0.5, $"Login text is offset {linkX - codeX}px from the device code at width {width}.");
+        }
+        finally { host.Close(); settingsWindow.Close(); }
     }
 });
 
@@ -462,6 +554,7 @@ sealed class CompatibleHttp : HttpMessageHandler
     public List<(string Url, string? Key)> Requests { get; } = [];
     public string? RefusedKey { get; set; }
     public string ModelId { get; set; } = "mock-brain";
+    public string[]? ModelIds { get; set; }
     public List<(string UserAgent, string? Session)> ClientHeaders { get; } = [];
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -471,7 +564,7 @@ sealed class CompatibleHttp : HttpMessageHandler
         if (RefusedKey is not null)
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent("Refused credential: " + RefusedKey) });
         var content = request.Method == HttpMethod.Get
-            ? JsonSerializer.Serialize(new { data = new[] { new { id = ModelId } } })
+            ? JsonSerializer.Serialize(new { data = (ModelIds ?? [ModelId]).Select(id => new { id }) })
             : request.RequestUri.AbsolutePath.EndsWith("/messages")
             ? "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello.\"}}\n\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\n"
             : "data: {\"choices\":[{\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n";
