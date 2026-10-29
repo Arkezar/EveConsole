@@ -30,12 +30,14 @@ public interface IAgentProvider
     /// the whole thing on every turn — the cache would appear to be enabled and never once be
     /// read. Kept apart, the stable prefix is cached and the changing tail is simply sent.</para>
     /// </param>
+    /// <param name="sessionId">Stable across a conversation and its auxiliary calls. Omit for one-off requests.</param>
     IAsyncEnumerable<string> StreamAsync(
         string                      systemPrompt,
         IReadOnlyList<AgentMessage> history,
         IReadOnlyList<IAgentTool>?  tools           = null,
         Action<UsageReport>?        onUsage         = null,
         string?                     volatileContext = null,
+        string?                     sessionId       = null,
         CancellationToken           ct              = default);
 
     /// <summary>

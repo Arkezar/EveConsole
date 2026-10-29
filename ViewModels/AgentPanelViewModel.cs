@@ -34,11 +34,11 @@ public sealed class AgentPanelViewModel : ReactiveObject
     private CancellationTokenSource _cts = new();
 
     /// <summary>
-    /// Groups this panel's turns in the telemetry so a thread can be read back in order.
+    /// Identifies this conversation in provider routing and telemetry.
     ///
     /// <para>Per panel instance rather than persisted: the point is to tell one sitting's turns
-    /// from another's when reading back why an answer was poor, and a conversation that survives a
-    /// restart is a different conversation for that purpose.</para>
+    /// from another's when reading back why an answer was poor. Clearing history or restarting
+    /// starts a new identity; summarizing the same conversation does not.</para>
     /// </summary>
     private string _conversationId = Guid.NewGuid().ToString("N");
 
@@ -794,6 +794,7 @@ public sealed class AgentPanelViewModel : ReactiveObject
                     window = u.ContextLength ?? window;
                 },
                 volatileContext: CurrentAppState(),
+                sessionId: _conversationId,
                 ct: attemptCts.Token).ConfigureAwait(false))
             {
                 lock (sb) sb.Append(chunk);
@@ -970,7 +971,7 @@ public sealed class AgentPanelViewModel : ReactiveObject
             timeout.CancelAfter(TimeSpan.FromSeconds(20));
             await foreach (var chunk in provider.StreamAsync(
                                ModelRouter.SystemPrompt, [new AgentMessage(MessageRole.User, prompt)],
-                               tools: null, onUsage: u => telemetry?.Usage(u), ct: timeout.Token).ConfigureAwait(false))
+                               tools: null, onUsage: u => telemetry?.Usage(u), sessionId: _conversationId, ct: timeout.Token).ConfigureAwait(false))
                 reply.Append(chunk);
 
             return ModelRouter.Parse(reply.ToString()) == ModelRoleKind.Analyst ? Part.Analyst : Part.Conversation;
@@ -1054,6 +1055,7 @@ public sealed class AgentPanelViewModel : ReactiveObject
 
     public void ClearHistory()
     {
+        _conversationId = Guid.NewGuid().ToString("N");
         _summarizationTask = null;
         _history.Clear();
         Messages.Clear();
@@ -1123,6 +1125,7 @@ public sealed class AgentPanelViewModel : ReactiveObject
             await foreach (var chunk in provider.StreamAsync(
                 systemPrompt, historySnapshot, tools: null,
                 onUsage: u => telemetry?.Usage(u),
+                sessionId: _conversationId,
                 ct: CancellationToken.None))
             {
                 sb.Append(chunk);

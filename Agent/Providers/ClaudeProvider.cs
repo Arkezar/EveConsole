@@ -106,6 +106,7 @@ public sealed class ClaudeProvider : IAgentProvider
         IReadOnlyList<IAgentTool>? tools   = null,
         Action<UsageReport>?       onUsage = null,
         string?                    volatileContext = null,
+        string?                    sessionId       = null,
         [EnumeratorCancellation]
         CancellationToken          ct      = default)
     {

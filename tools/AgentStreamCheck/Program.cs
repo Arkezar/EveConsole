@@ -60,6 +60,22 @@ failures.AddRange(Scenario.Run("Local (Ollama)",
     () => OpenAiCompatibleProvider.Local("http://fake-ollama:11434", "qwen2.5:7b"),
     new FakeOllama(), (h, usage) => ((FakeOllama)h).VerifyLocal(usage)));
 
+var goSettings = new AgentSettings();
+goSettings.ConfigurationFor("opencode-go").ApiKey = "not-a-real-key";
+failures.AddRange(Scenario.Run("OpenCode Go, translated Chat Completions",
+    handler => Seam(typeof(OpenAiCompatibleProvider), handler),
+    () => AgentProviders.Default.Build(new ModelProfile { ProviderId = "opencode-go", Model = "glm-5.3" }, goSettings)!,
+    new FakeOpenAi(), (h, usage) =>
+    {
+        var errors = ((FakeOpenAi)h).Verify();
+        var sessions = ((FakeOpenAi)h).SessionIds;
+        if (sessions.Any(string.IsNullOrEmpty) || sessions.Distinct().Count() != 1)
+            errors.Add("the Go session identity changed or disappeared between tool rounds");
+        if (usage.Any(u => u.Provider != "OpenCode Go" || u.IsLocal))
+            errors.Add("Go usage borrowed another provider's identity");
+        return errors;
+    }));
+
 if (failures.Count == 0)
 {
     Console.WriteLine();
@@ -218,6 +234,7 @@ abstract class FakeSse : HttpMessageHandler, IFakeServer
 {
     private int _requests;
     public int Requests => _requests;
+    public List<string?> SessionIds { get; } = [];
 
     protected abstract Task WriteRoundAsync(Func<string, Task> write, int round, string body, CancellationToken ct);
 
@@ -232,6 +249,7 @@ abstract class FakeSse : HttpMessageHandler, IFakeServer
     {
         await Task.Delay(20, ct).ConfigureAwait(false);
         if (req.Method == HttpMethod.Get) return await SideRequestAsync(req, ct).ConfigureAwait(false);
+        SessionIds.Add(req.Headers.TryGetValues("x-opencode-session", out var sessions) ? sessions.Single() : null);
         var round = Interlocked.Increment(ref _requests);
         var body  = await req.Content!.ReadAsStringAsync(ct);
         var pipe  = new Pipe();

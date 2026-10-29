@@ -189,7 +189,7 @@ Check("the Messages adapter also honors provider identity and endpoint", () =>
     });
 });
 
-Check("background rate discovery sees the same added provider without opening Settings", () =>
+Check("background discovery includes Go's model list and the test-only provider without opening Settings", () =>
 {
     using var connection = new SqliteConnection("Data Source=:memory:");
     connection.Open();
@@ -199,6 +199,7 @@ Check("background rate discovery sees the same added provider without opening Se
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
         db.ServiceRates.Add(new ServiceRate { Kind = "llm", Provider = "Test compatible", Model = "" });
+        db.ServiceRates.Add(new ServiceRate { Kind = "llm", Provider = "OpenCode Go", Model = "" });
         db.SaveChanges();
     }
     // A fresh local price-list fixture keeps this check offline.
@@ -208,12 +209,14 @@ Check("background rate discovery sees the same added provider without opening Se
     var telemetry = new AgentTelemetryService(scopes, new AppErrorLogger(scopes));
     var settings = new AgentSettings();
     settings.ConfigurationFor("test-compatible").ApiKey = "background-key";
+    settings.ConfigurationFor("opencode-go").ApiKey = "go-background-key";
     using var handler = new CompatibleHttp();
     using var client = new HttpClient(handler);
     WithHttp(typeof(OpenAiCompatibleProvider), client, () =>
     {
-        Require(ListedRates.SyncAsync(settings, telemetry, providers: providers).GetAwaiter().GetResult() == 1, "Background discovery did not add the listed model's rate row.");
-        Require(handler.Requests.Single().Key == "background-key", "Background discovery did not use provider-keyed credentials.");
+        Require(ListedRates.SyncAsync(settings, telemetry, providers: providers).GetAwaiter().GetResult() == 2, "Background discovery did not add both providers' model rows.");
+        Require(handler.Requests.Contains(("https://default.invalid/v1/models", "background-key")), "Background discovery did not use the test provider's credential.");
+        Require(handler.Requests.Contains(("https://opencode.ai/inference/go/v1/models", "go-background-key")), "Background discovery ignored Go's model-list route or credential.");
     });
 });
 
@@ -314,6 +317,74 @@ Check("authoritative credentials win even when legacy properties appear last", (
     Require(settings.OpenAiApiKey == "new-key" && settings.ClaudeApiKey == "new-claude" && settings.ClaudeCacheTtl == "1h", "Property order changed migration precedence.");
 });
 
+Check("OpenCode Go shares setup, discovery and runtime without borrowing OpenAI identity", () =>
+{
+    Require(AgentProviders.Default.Find("opencode-go") is not null, "OpenCode Go is missing from the provider definitions.");
+    var settings = Read("""{"OpenAiApiKey":"speech-key","Models":[{"Id":"go","ProviderId":"opencode-go","Model":"glm-5.3"}],"ConversationRole":{"ModelId":"go"}}""");
+    File.WriteAllText(Path.Combine(profileDirectory, "agent-settings.json"), JsonSerializer.Serialize(settings));
+    var service = new AgentService();
+    using var roles = service.Roles;
+    var vm = new AgentSettingsViewModel(service);
+    using var handler = new CompatibleHttp { ModelId = "glm-5.3" };
+    using var client = new HttpClient(handler);
+    WithHttp(typeof(OpenAiCompatibleProvider), client, () =>
+    {
+        try
+        {
+            var model = vm.SelectedModel!;
+            Require(model.ServiceOptions.Any(o => o.Id == "opencode-go") && model.ShowApiKey && model.ShowEndpoint, "Go did not reach the common Settings controls.");
+            Require(!model.ShowThink && !model.ShowClaude, "Go inherited another provider's exceptional controls.");
+            Require(service.Providers.Validate(model.ToProfile(), service.Settings) is not null, "Go must require its own key.");
+            model.ApiKey = "go-key";
+            vm.FlushAsync().GetAwaiter().GetResult();
+            model.ModelList.LoadAsync(force: true).GetAwaiter().GetResult();
+            Require(handler.Requests.Last().Url == "https://opencode.ai/inference/go/v1/models", "Go discovery used an inference-protocol path instead of its documented model list.");
+            var provider = service.Roles.Conversation!.Provider!;
+            var usage = new List<UsageReport>();
+            async Task Answer()
+            {
+                await foreach (var chunk in provider.StreamAsync("system", [new AgentMessage(MessageRole.User, "hi")], onUsage: usage.Add)) { }
+            }
+            Answer().GetAwaiter().GetResult();
+            Require(handler.Requests.Last() == ("https://opencode.ai/inference/go/openai/v1/chat/completions", "go-key"), "Go execution used the wrong endpoint or key.");
+            Require(handler.ClientHeaders.Last().Session is { Length: > 0 }, "Go inference did not identify its conversation.");
+            Require(provider.IsAvailableAsync().GetAwaiter().GetResult(), "Go availability could not use the documented model list.");
+            Require(handler.Requests.Last().Url == "https://opencode.ai/inference/go/v1/models", "Go availability used the wrong endpoint.");
+            Require(handler.ClientHeaders.All(h => h.UserAgent.StartsWith("EveConsole", StringComparison.Ordinal)), "Go requests did not identify the real client.");
+            Require(usage.Single() is { Provider: "OpenCode Go", IsLocal: false }, "Go usage was recorded as OpenAI or Local.");
+            Require(service.Settings.OpenAiApiKey == "speech-key", "The Go key replaced the shared OpenAI speech key.");
+        }
+        finally { vm.CloseAsync().GetAwaiter().GetResult(); }
+    });
+});
+
+Check("Go routing follows conversation identity, not a model instance or request", () =>
+{
+    var settings = new AgentSettings { OpenAiApiKey = "speech-key" };
+    settings.ConfigurationFor("opencode-go").ApiKey = "go-key";
+    var go = AgentProviders.Default.Build(new ModelProfile { ProviderId = "opencode-go", Model = "glm-5.3" }, settings)!;
+    using var handler = new CompatibleHttp();
+    using var client = new HttpClient(handler);
+    WithHttp(typeof(OpenAiCompatibleProvider), client, () =>
+    {
+        async Task Answer(IAgentProvider provider, string? sessionId = null)
+        {
+            await foreach (var chunk in provider.StreamAsync("system", [new AgentMessage(MessageRole.User, "hi")], sessionId: sessionId)) { }
+        }
+        Answer(go, "conversation-a").GetAwaiter().GetResult();
+        Answer(go, "conversation-a").GetAwaiter().GetResult();
+        Answer(go, "conversation-b").GetAwaiter().GetResult();
+        Require(handler.ClientHeaders.Select(h => h.Session).SequenceEqual(new[] { "conversation-a", "conversation-a", "conversation-b" }), "Go routing did not preserve the supplied conversation identity.");
+        Answer(go).GetAwaiter().GetResult();
+        Answer(go).GetAwaiter().GetResult();
+        var oneOff = handler.ClientHeaders.Skip(3).Select(h => h.Session).ToList();
+        Require(oneOff.All(s => !string.IsNullOrEmpty(s)) && oneOff.Distinct().Count() == 2, "Independent one-off requests shared a routing identity.");
+        var openAi = AgentProviders.Default.Build(new ModelProfile { ProviderId = "openai", Model = "chat" }, settings)!;
+        Answer(openAi, "conversation-a").GetAwaiter().GetResult();
+        Require(handler.ClientHeaders.Last().Session is null, "A Go routing header leaked to another provider.");
+    });
+});
+
 Check("the Settings ComboBox can switch from Claude or an unavailable provider and persist every choice", () =>
 {
     AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).SetupWithoutStarting();
@@ -390,14 +461,17 @@ sealed class CompatibleHttp : HttpMessageHandler
 {
     public List<(string Url, string? Key)> Requests { get; } = [];
     public string? RefusedKey { get; set; }
+    public string ModelId { get; set; } = "mock-brain";
+    public List<(string UserAgent, string? Session)> ClientHeaders { get; } = [];
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         Requests.Add((request.RequestUri!.AbsoluteUri, request.Headers.Authorization?.Parameter
             ?? (request.Headers.TryGetValues("x-api-key", out var keys) ? keys.Single() : null)));
+        ClientHeaders.Add((request.Headers.UserAgent.ToString(), request.Headers.TryGetValues("x-opencode-session", out var sessions) ? sessions.Single() : null));
         if (RefusedKey is not null)
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent("Refused credential: " + RefusedKey) });
         var content = request.Method == HttpMethod.Get
-            ? """{"data":[{"id":"mock-brain"}]}"""
+            ? JsonSerializer.Serialize(new { data = new[] { new { id = ModelId } } })
             : request.RequestUri.AbsolutePath.EndsWith("/messages")
             ? "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello.\"}}\n\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\n"
             : "data: {\"choices\":[{\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n";

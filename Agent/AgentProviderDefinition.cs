@@ -11,6 +11,9 @@ public sealed record AgentProviderDefinition
     public required string Name { get; init; }
     public string BaseUrl { get; init; } = "";
     public string KeyUrl { get; init; } = "";
+    public string ModelsPath { get; init; } = "models";
+    /// <summary>Optional Chat Completions header for stable conversation routing.</summary>
+    public string SessionHeader { get; init; } = "";
     public AgentProtocol Protocol { get; init; } = AgentProtocol.ChatCompletions;
     public bool IsLocal { get; init; }
     public bool RequiresApiKey => !IsLocal;

@@ -17,6 +17,9 @@ public sealed class AgentProviders
                 BaseUrl = "https://api.anthropic.com/v1/", KeyUrl = "https://console.anthropic.com/settings/keys" },
         new() { Id = OpenAi, Name = OpenAiCompatibleProvider.OpenAiName, BaseUrl = "https://api.openai.com/v1/",
                 FilterOpenAiModels = true, KeyUrl = "https://platform.openai.com/api-keys" },
+        // Go translates text models to Chat Completions; its model list is protocol-neutral.
+        new() { Id = "opencode-go", Name = "OpenCode Go", BaseUrl = "https://opencode.ai/inference/go/openai/v1/",
+                ModelsPath = "../../v1/models", SessionHeader = "x-opencode-session", KeyUrl = "https://opencode.ai/console" },
     ]);
 
     public AgentProviders(IEnumerable<AgentProviderDefinition> definitions) => Definitions = definitions.ToArray();
@@ -70,7 +73,8 @@ public sealed class AgentProviders
         {
             AgentProtocol.AnthropicMessages => new ClaudeProvider(configuration.ApiKey.Trim(), model.ModelName, configuration.CacheTtl, Endpoint(model, settings), definition.Name),
             _ when definition.IsLocal => OpenAiCompatibleProvider.Local(model.Endpoint, model.ModelName, model.Think),
-            _ => OpenAiCompatibleProvider.Compatible(definition.Name, Endpoint(model, settings), configuration.ApiKey.Trim(), model.ModelName),
+            _ => OpenAiCompatibleProvider.Compatible(definition.Name, Endpoint(model, settings), configuration.ApiKey.Trim(), model.ModelName,
+                definition.ModelsPath, definition.SessionHeader),
         };
     }
 
@@ -84,7 +88,8 @@ public sealed class AgentProviders
         {
             AgentProtocol.AnthropicMessages => ClaudeProvider.ListModelsAsync(key, ct, Endpoint(model, settings), definition.Name),
             _ when definition.IsLocal => OpenAiCompatibleProvider.ListLocalModelsAsync(model.Endpoint, ct),
-            _ => OpenAiCompatibleProvider.ListCompatibleModelsAsync(Endpoint(model, settings), key, definition.Name, definition.FilterOpenAiModels, ct),
+            _ => OpenAiCompatibleProvider.ListCompatibleModelsAsync(Endpoint(model, settings), key, definition.Name,
+                definition.FilterOpenAiModels, definition.ModelsPath, ct),
         };
     }
 
