@@ -13,8 +13,6 @@ namespace EveConsole.Agent;
 /// </summary>
 public static class ListedRates
 {
-    public static (string Kind, string Provider) ClaudeChat      => ("llm", ClaudeProvider.ServiceName);
-    public static (string Kind, string Provider) OpenAiChat      => ("llm", OpenAiCompatibleProvider.OpenAiName);
     public static (string Kind, string Provider) OpenAiSpeech    => ("tts", nameof(TtsProvider.OpenAi));
     public static (string Kind, string Provider) ElevenLabs      => ("tts", nameof(TtsProvider.ElevenLabs));
     public static (string Kind, string Provider) OpenAiTranscribe => ("stt", nameof(SpeechInputProvider.OpenAiWhisper));
@@ -25,8 +23,10 @@ public static class ListedRates
     /// list has it (see PublishedRates). Returns how many rows were added or priced. A service that
     /// does not answer is passed over — this only adds, and the next time will do.
     /// </summary>
-    public static async Task<int> SyncAsync(AgentSettings keys, AgentTelemetryService telemetry, CancellationToken ct = default)
+    public static async Task<int> SyncAsync(AgentSettings keys, AgentTelemetryService telemetry,
+        CancellationToken ct = default, AgentProviders? providers = null)
     {
+        providers ??= AgentProviders.Default;
         var added = 0;
         async Task Add((string Kind, string Provider) rate, Func<Task<IReadOnlyList<ModelListing>>> list)
         {
@@ -34,14 +34,16 @@ public static class ListedRates
             catch (Exception) when (!ct.IsCancellationRequested) { /* not answering: next time */ }
         }
 
-        var claude = keys.ClaudeApiKey.Trim();
-        if (claude.Length > 0)
-            await Add(ClaudeChat, () => ClaudeProvider.ListModelsAsync(claude, ct));
+        foreach (var definition in providers.Definitions.Where(d => !d.IsLocal))
+        {
+            var model = new ModelProfile { ProviderId = definition.Id };
+            if (providers.Validate(model, keys, requireModel: false) is null)
+                await Add(("llm", definition.Name), () => providers.ListModelsAsync(model, keys, ct));
+        }
 
         var openAi = keys.OpenAiApiKey.Trim();
         if (openAi.Length > 0)
         {
-            await Add(OpenAiChat,       () => OpenAiCompatibleProvider.ListOpenAiModelsAsync(openAi, ct));
             await Add(OpenAiSpeech,     () => OpenAiCompatibleProvider.ListOpenAiSpeechModelsAsync(openAi, ct));
             await Add(OpenAiTranscribe, () => OpenAiCompatibleProvider.ListOpenAiTranscriptionModelsAsync(openAi, ct));
         }

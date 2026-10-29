@@ -75,7 +75,11 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
 
     /// <summary>OpenAI's own service. The model as its list names it; no default (see ModelListing).</summary>
     public static OpenAiCompatibleProvider OpenAi(string apiKey, string model)
-        => new(OpenAiName, OpenAiBase, apiKey ?? "", (model ?? "").Trim(), isLocal: false);
+        => Compatible(OpenAiName, OpenAiBase, apiKey, model);
+
+    /// <summary>A named hosted provider using the same protocol, without Local's free/Ollama behavior.</summary>
+    public static OpenAiCompatibleProvider Compatible(string name, string baseUrl, string apiKey, string model)
+        => new(name, baseUrl.Trim().TrimEnd('/') + "/", apiKey ?? "", (model ?? "").Trim(), isLocal: false);
 
     /// <summary>What OpenAI's usage is recorded and priced under — see ServiceRate.</summary>
     public const string OpenAiName = "OpenAI";
@@ -121,10 +125,15 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     /// what a model is for, so any rule is a guess; one that named the families to keep would
     /// hide the next family the day it came out.</para>
     /// </summary>
-    public static async Task<IReadOnlyList<ModelListing>> ListOpenAiModelsAsync(string apiKey, CancellationToken ct = default)
+    public static Task<IReadOnlyList<ModelListing>> ListOpenAiModelsAsync(string apiKey, CancellationToken ct = default)
+        => ListCompatibleModelsAsync(OpenAiBase, apiKey, OpenAiName, filterOpenAiModels: true, ct);
+
+    public static async Task<IReadOnlyList<ModelListing>> ListCompatibleModelsAsync(
+        string baseUrl, string apiKey, string name, bool filterOpenAiModels = false, CancellationToken ct = default)
     {
+        var all = await ListAsync(baseUrl.Trim().TrimEnd('/') + "/", apiKey, name, ct).ConfigureAwait(false);
+        if (!filterOpenAiModels) return all;
         string[] notForTalk = ["tts", "whisper", "transcribe", "audio", "realtime", "dall-e", "image", "embedding", "moderation", "search", "sora"];
-        var all = await ListAsync(OpenAiBase, apiKey, "OpenAI", ct).ConfigureAwait(false);
         return [.. all.Where(m => !notForTalk.Any(word => m.Id.Contains(word, StringComparison.OrdinalIgnoreCase)))];
     }
 
@@ -155,7 +164,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"{who} answered {(int)response.StatusCode}: {(body.Length > 200 ? body[..200] + "…" : body)}",
+            throw new HttpRequestException($"{who} answered {(int)response.StatusCode}: {Trim(Redact(body, apiKey), 200)}",
                                            null, response.StatusCode);
 
         using var doc = JsonDocument.Parse(body);
@@ -234,7 +243,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
             var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             // With the status, so a role can tell a server that is down from a request it refused.
             throw new HttpRequestException(
-                $"{ProviderName} returned {(int)response.StatusCode}: {Trim(body, 400)}", null, response.StatusCode);
+                $"{ProviderName} returned {(int)response.StatusCode}: {Trim(Redact(body, _apiKey), 400)}", null, response.StatusCode);
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -641,6 +650,8 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         try   { using var doc = JsonDocument.Parse(source); return doc.RootElement.Clone(); }
         catch { using var doc = JsonDocument.Parse("{}");   return doc.RootElement.Clone(); }
     }
+
+    private static string Redact(string text, string key) => key.Length == 0 ? text : text.Replace(key, "[redacted]", StringComparison.Ordinal);
 
     private static string Trim(string s, int max) => s.Length <= max ? s : s[..max] + "…";
 }

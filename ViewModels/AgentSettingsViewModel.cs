@@ -24,6 +24,21 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     private readonly AgentService        _service;
     private readonly TtsService?         _tts;
     private readonly SpeechInputService? _speech;
+    private AgentSettings _providerSettings = new();
+    public AgentProviders Providers => _service.Providers;
+    internal AgentSettings ProviderSettings => _providerSettings;
+
+    internal void ProviderEdited(string id)
+    {
+        foreach (var model in Models.Where(m => m.ProviderId == id)) model.RefreshProviderSettings();
+        if (id == AgentProviders.Claude) this.RaisePropertyChanged(nameof(ClaudeCacheTtlOption));
+        if (id == AgentProviders.OpenAi)
+        {
+            this.RaisePropertyChanged(nameof(OpenAiApiKey));
+            if (_selectedVoice?.Provider == TtsProvider.OpenAi) _selectedVoice.KeyChanged();
+            if (_speechInputProvider == SpeechInputKind.OpenAiWhisper) _relistTranscription.OnNext(System.Reactive.Unit.Default);
+        }
+    }
 
     // ── personalisation ───────────────────────────────────────────────────────
     private string _agentName = AgentSettings.DefaultAgentName;
@@ -155,7 +170,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     {
         var model = new ModelProfileVm(this, new ModelProfile
         {
-            Provider = AgentProviderType.Local,
+            ProviderId = AgentProviders.Local,
             Endpoint = "http://localhost:11434",
         });
         Models.Add(model);
@@ -168,6 +183,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
         if (_selectedModel is not { } model || Models.Count <= 1) return;
         var index = Models.IndexOf(model);
         Models.Remove(model);
+        model.Dispose();
 
         // A role that named it: the conversation takes the first model left; the others go back
         // to "same as conversation" or to no fallback.
@@ -395,20 +411,9 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     public async Task<(bool Ok, string Message)> TestModelAsync(ModelProfileVm vm)
     {
         var profile = vm.ToProfile();
-        var keys    = new AgentSettings
-        {
-            ClaudeApiKey   = _claudeApiKey.Trim(),
-            ClaudeCacheTtl = _claudeCacheTtl,
-            OpenAiApiKey   = _openAiApiKey.Trim(),
-        };
-        if (AgentService.BuildProvider(profile, keys) is not { } provider)
-            return (false, profile.Provider switch
-            {
-                _ when profile.ModelName.Length == 0 => SettingsText.AgentTestChooseModel,
-                AgentProviderType.Claude => SettingsText.AgentTestNeedClaudeKey,
-                AgentProviderType.OpenAI => SettingsText.AgentTestNeedOpenAiKey,
-                _                        => SettingsText.AgentTestNeedAddress,
-            });
+        var keys = _providerSettings.Clone();
+        if (Providers.Validate(profile, keys) is { } why) return (false, why);
+        var provider = Providers.Build(profile, keys)!;
 
         var telemetry = _service.Telemetry;
         telemetry?.Begin("settings-test", provider.ProviderName, profile.ModelName, 0);
@@ -439,18 +444,6 @@ public sealed class AgentSettingsViewModel : ReactiveObject
         finally { telemetry?.Complete(reply.Length, failure); }
     }
 
-    // ── Claude ─────────────────────────────────────────────────────────────────
-    private string _claudeApiKey = "";
-    public string ClaudeApiKey
-    {
-        get => _claudeApiKey;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _claudeApiKey, value);
-            if (_selectedModel?.Provider == AgentProviderType.Claude) _selectedModel.KeyChanged();
-        }
-    }
-
     // ── Claude prompt-cache lifetime ────────────────────────────────────────────
     /// <summary>The cache lifetimes, by the value the settings keep ("5m", "1h"), with the words shown.</summary>
     public IReadOnlyList<Choice<string>> ClaudeCacheTtlOptions { get; } =
@@ -459,32 +452,29 @@ public sealed class AgentSettingsViewModel : ReactiveObject
         new("1h", SettingsText.CacheTtl1Hour),
     ];
 
-    private string _claudeCacheTtl = "5m";
     public Choice<string> ClaudeCacheTtlOption
     {
-        get => ClaudeCacheTtlOptions.FirstOrDefault(o => o.Value == _claudeCacheTtl) ?? ClaudeCacheTtlOptions[0];
+        get => ClaudeCacheTtlOptions.FirstOrDefault(o => o.Value == _providerSettings.ClaudeCacheTtl) ?? ClaudeCacheTtlOptions[0];
         set
         {
             // A detaching ComboBox sets null; that is not a choice. (It used to be read as
             // "not 1 hour" and quietly set the lifetime back to 5 minutes.)
             if (value is null) { this.RaisePropertyChanged(); return; }
-            if (value.Value == _claudeCacheTtl) return;
-            _claudeCacheTtl = value.Value;
-            this.RaisePropertyChanged();
+            if (value.Value == _providerSettings.ClaudeCacheTtl) return;
+            _providerSettings.ClaudeCacheTtl = value.Value;
+            ProviderEdited(AgentProviders.Claude);
         }
     }
 
     // ── OpenAI ─────────────────────────────────────────────────────────────────
-    private string _openAiApiKey = "";
     public string OpenAiApiKey
     {
-        get => _openAiApiKey;
+        get => _providerSettings.OpenAiApiKey;
         set
         {
-            this.RaiseAndSetIfChanged(ref _openAiApiKey, value);
-            if (_selectedModel?.Provider == AgentProviderType.OpenAI) _selectedModel.KeyChanged();
-            if (_selectedVoice?.Provider == TtsProvider.OpenAi) _selectedVoice.KeyChanged();
-            if (_speechInputProvider == SpeechInputKind.OpenAiWhisper) _relistTranscription.OnNext(System.Reactive.Unit.Default);
+            if (value == OpenAiApiKey) return;
+            _providerSettings.OpenAiApiKey = value;
+            ProviderEdited(AgentProviders.OpenAi);
         }
     }
 
@@ -707,7 +697,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
 
     private ServiceListChoice.Source TranscriptionSource()
     {
-        var key = _openAiApiKey.Trim();
+        var key = OpenAiApiKey.Trim();
         return key.Length == 0
             ? ServiceListChoice.Source.Unavailable(SettingsText.TranscriptionNeedOpenAiKey, "none")
             : new(null, $"openai-stt|{key.Length}:{key.GetHashCode()}",   // not the key itself
@@ -950,14 +940,12 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     private void LoadFromService()
     {
         var s = _service.Settings;
+        _providerSettings = s.Clone();
         _agentName              = string.IsNullOrWhiteSpace(s.AgentName) ? AgentSettings.DefaultAgentName : s.AgentName;
         _verbosity              = s.Verbosity;
         _userName               = string.IsNullOrWhiteSpace(s.UserName) ? AgentSettings.DefaultUserName : s.UserName;
         _userGuidance           = s.UserGuidance ?? "";
         _isEnabled              = s.Enabled;
-        _claudeApiKey           = s.ClaudeApiKey;
-        _claudeCacheTtl         = s.ClaudeCacheTtl == "1h" ? "1h" : "5m";
-        _openAiApiKey           = s.OpenAiApiKey;
         _persistHistory         = s.PersistHistory;
         _summarizationThreshold = s.SummarizationThreshold;
 
@@ -1022,6 +1010,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     {
         await _autoSave.FlushAsync();
         _serviceEcho.Dispose();
+        foreach (var model in Models) model.Dispose();
     }
 
     private void Watch(ReactiveObject source) =>
@@ -1093,16 +1082,14 @@ public sealed class AgentSettingsViewModel : ReactiveObject
 
     private AgentSettings BuildSettings()
     {
-        return new AgentSettings
+        var settings = new AgentSettings
         {
             AgentName  = string.IsNullOrWhiteSpace(_agentName) ? AgentSettings.DefaultAgentName : _agentName.Trim(),
             Verbosity  = _verbosity,
             UserName     = string.IsNullOrWhiteSpace(_userName) ? AgentSettings.DefaultUserName : _userName.Trim(),
             UserGuidance = (_userGuidance ?? "").Trim(),
             Enabled       = _isEnabled,
-            ClaudeApiKey  = _claudeApiKey.Trim(),
-            ClaudeCacheTtl = _claudeCacheTtl,
-            OpenAiApiKey  = _openAiApiKey.Trim(),
+            ProviderConfigurations = _providerSettings.Clone().ProviderConfigurations,
 
             Models           = [.. Models.Select(m => m.ToProfile())],
             ConversationRole = new() { ModelId = _conversationModelId, FallbackId = _conversationFallbackId, Announce = _conversationAnnounce },
@@ -1148,6 +1135,10 @@ public sealed class AgentSettingsViewModel : ReactiveObject
             MicrophoneDeviceName  = _microphoneDevice,
             PushToTalkKey         = _pushToTalkKey,
         };
+        // Speech consumers share the same normalized credential as model adapters.
+        settings.OpenAiApiKey = settings.OpenAiApiKey.Trim();
+        settings.ClaudeApiKey = settings.ClaudeApiKey.Trim();
+        return settings;
     }
 
     /// <summary>
@@ -1157,7 +1148,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject
     public Task<VoiceTestResult> TestVoiceAsync(VoiceProfileVm voice)
     {
         if (_tts is null) return Task.FromResult(new VoiceTestResult(false, SettingsText.AgentSpeechUnavailable));
-        var keys = new AgentSettings { OpenAiApiKey = _openAiApiKey.Trim(), ElevenLabsApiKey = _elevenLabsApiKey.Trim() };
+        var keys = new AgentSettings { OpenAiApiKey = OpenAiApiKey.Trim(), ElevenLabsApiKey = _elevenLabsApiKey.Trim() };
         return _tts.TestVoiceAsync(voice.ToProfile(), keys, string.Format(SettingsText.VoiceTestSentence, voice.SpokenName));
     }
 

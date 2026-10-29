@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using EveConsole.Localization;
 
@@ -45,10 +46,51 @@ public sealed class AgentSettings
         copy.Models           = [.. Models.Select(m => m.Clone())];
         copy.ConversationRole = ConversationRole.Clone();
         copy.AnalystRole      = AnalystRole.Clone();
+        copy.ProviderConfigurations = (ProviderConfigurations ?? []).ToDictionary(p => p.Key, p => p.Value?.Clone() ?? new());
+        copy.NormalizeProviders();
         return copy;
     }
 
-    public string ClaudeApiKey  { get; set; } = "";
+    public Dictionary<string, ProviderConfiguration> ProviderConfigurations { get; set; } = [];
+
+    private string _legacyClaudeKey = "", _legacyOpenAiKey = "", _legacyCacheTtl = "5m";
+
+    public void NormalizeProviders()
+    {
+        ProviderConfigurations ??= [];
+        // A present but empty entry is authoritative; never restore its legacy credential.
+        foreach (var id in ProviderConfigurations.Keys.ToArray())
+        {
+            var configuration = ProviderConfigurations[id] ??= new();
+            configuration.ApiKey ??= "";
+            configuration.Endpoint ??= "";
+            configuration.CacheTtl ??= "5m";
+        }
+        ProviderConfigurations.TryAdd(AgentProviders.Claude, new() { ApiKey = _legacyClaudeKey ?? "", CacheTtl = _legacyCacheTtl ?? "5m" });
+        ProviderConfigurations.TryAdd(AgentProviders.OpenAi, new() { ApiKey = _legacyOpenAiKey ?? "" });
+        ProviderConfigurations.TryAdd(AgentProviders.Local, new());
+    }
+
+    public ProviderConfiguration ConfigurationFor(string providerId)
+    {
+        NormalizeProviders();
+        if (!ProviderConfigurations.TryGetValue(providerId, out var configuration))
+            ProviderConfigurations[providerId] = configuration = new();
+        return configuration;
+    }
+
+    [JsonIgnore] public string ClaudeApiKey
+    {
+        get => ConfigurationFor(AgentProviders.Claude).ApiKey;
+        set => ConfigurationFor(AgentProviders.Claude).ApiKey = value;
+    }
+
+    // Read legacy mirrors without overwriting authoritative provider settings, in either JSON order.
+    [JsonPropertyName("ClaudeApiKey")] public string LegacyClaudeApiKey
+    {
+        get => ClaudeApiKey;
+        set => _legacyClaudeKey = value;
+    }
     // (No model named by default here either: a file that never had one gets a model with none
     // chosen, and the settings tab offers the service's list. See ModelProfile.ModelName.)
     public string ClaudeModel   { get; set; } = "";
@@ -59,9 +101,30 @@ public sealed class AgentSettings
     /// against 1.25×, and only pays when turns are typically 5–60 minutes apart. Claude only —
     /// the other providers cache automatically with no lifetime to choose.
     /// </summary>
-    public string ClaudeCacheTtl { get; set; } = "5m";
+    [JsonIgnore] public string ClaudeCacheTtl
+    {
+        get => ConfigurationFor(AgentProviders.Claude).CacheTtl;
+        set => ConfigurationFor(AgentProviders.Claude).CacheTtl = value;
+    }
 
-    public string OpenAiApiKey  { get; set; } = "";
+    [JsonPropertyName("ClaudeCacheTtl")] public string LegacyClaudeCacheTtl
+    {
+        get => ClaudeCacheTtl;
+        set => _legacyCacheTtl = value;
+    }
+
+    // Speech and voices intentionally use this same credential, even with another conversation provider.
+    [JsonIgnore] public string OpenAiApiKey
+    {
+        get => ConfigurationFor(AgentProviders.OpenAi).ApiKey;
+        set => ConfigurationFor(AgentProviders.OpenAi).ApiKey = value;
+    }
+
+    [JsonPropertyName("OpenAiApiKey")] public string LegacyOpenAiApiKey
+    {
+        get => OpenAiApiKey;
+        set => _legacyOpenAiKey = value;
+    }
     public string OpenAiModel   { get; set; } = "";
 
     public string LocalEndpoint { get; set; } = "http://localhost:11434";
@@ -70,7 +133,7 @@ public sealed class AgentSettings
     // ⚠️ Provider, ClaudeModel, OpenAiModel, LocalEndpoint and LocalModel above are the ONE model
     // this file described before there was a list. They are read once, to make the list's first
     // entries, and written back from the data model afterwards for an older build that opens the
-    // file (see MirrorLegacyModel). The keys and the cache lifetime are still live: one per service.
+    // file (see MirrorLegacyModel). Keys and cache lifetime above now mirror ProviderConfigurations.
 
     // ── Models and their roles ────────────────────────────────────────────────
     //
@@ -175,6 +238,7 @@ public sealed class AgentSettings
     /// </summary>
     public void NormalizeModels()
     {
+        NormalizeProviders();
         if (Models.Count == 0)
         {
             var first = LegacyModel(Provider);
@@ -197,7 +261,8 @@ public sealed class AgentSettings
     {
         AgentProviderType.Claude => new() { Provider = provider, Model = ClaudeModel },
         AgentProviderType.OpenAI => new() { Provider = provider, Model = OpenAiModel },
-        _                        => new() { Provider = provider, Model = LocalModel, Endpoint = LocalEndpoint },
+        AgentProviderType.Local => new() { Provider = provider, Model = LocalModel, Endpoint = LocalEndpoint },
+        _ => new() { Provider = provider },
     };
 
     /// <summary>Whether the old single-model fields hold a setup worth carrying over for a service
@@ -207,7 +272,8 @@ public sealed class AgentSettings
         AgentProviderType.Claude => !string.IsNullOrWhiteSpace(ClaudeApiKey),
         AgentProviderType.OpenAI => !string.IsNullOrWhiteSpace(OpenAiApiKey),
         // "llama3.1" was the untouched default until models came from the server's own list.
-        _                        => LocalEndpoint.Trim() != "http://localhost:11434" || LocalModel.Trim() is not ("" or "llama3.1"),
+        AgentProviderType.Local => LocalEndpoint.Trim() != "http://localhost:11434" || LocalModel.Trim() is not ("" or "llama3.1"),
+        _ => false,
     };
 
     /// <summary>
@@ -217,12 +283,13 @@ public sealed class AgentSettings
     public void MirrorLegacyModel()
     {
         if ((ModelById(AnalystRole.ModelId) ?? ModelById(ConversationRole.ModelId)) is not { } m) return;
-        Provider = m.Provider;
-        switch (m.Provider)
+        if (AgentProviders.LegacyType(m.ProviderId) is not { } legacy) return;
+        Provider = legacy;
+        switch (legacy)
         {
             case AgentProviderType.Claude: ClaudeModel = m.ModelName; break;
             case AgentProviderType.OpenAI: OpenAiModel = m.ModelName; break;
-            default: LocalEndpoint = m.Endpoint; LocalModel = m.ModelName; break;
+            case AgentProviderType.Local: LocalEndpoint = m.Endpoint; LocalModel = m.ModelName; break;
         }
     }
 
@@ -379,7 +446,24 @@ public sealed class ModelProfile
 
     /// <summary>What it is called in the lists and under a reply. Blank: described instead.</summary>
     public string            Name     { get; set; } = "";
-    public AgentProviderType Provider { get; set; } = AgentProviderType.Claude;
+    private AgentProviderType _legacyProvider = AgentProviderType.Claude;
+    private string? _providerId;
+
+    public string ProviderId
+    {
+        get => _providerId ?? AgentProviders.LegacyId(_legacyProvider);
+        set => _providerId = value ?? "";
+    }
+
+    // Older builds read this number. Never disguise an unsupported provider as a known one.
+    public AgentProviderType Provider
+    {
+        get => AgentProviders.LegacyType(ProviderId)
+            ?? (ProviderId == AgentProviders.LegacyId(_legacyProvider) ? _legacyProvider : (AgentProviderType)(-1));
+        set => _legacyProvider = value;
+    }
+
+    [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
     public string            Model    { get; set; } = "";
 
     /// <summary>A local server's root, as Ollama documents it: http://gpu-box:11434.</summary>
@@ -395,7 +479,12 @@ public sealed class ModelProfile
 
     public static string NewId() => Guid.NewGuid().ToString("N")[..12];
 
-    public ModelProfile Clone() => (ModelProfile)MemberwiseClone();
+    public ModelProfile Clone()
+    {
+        var copy = (ModelProfile)MemberwiseClone();
+        copy.Extra = Extra is null ? null : new(Extra);
+        return copy;
+    }
 
     /// <summary>
     /// The model as its service names it; empty while none is chosen.
@@ -405,26 +494,15 @@ public sealed class ModelProfile
     /// model with none chosen is now not set up, and says so; the settings tab offers the
     /// service's own list and picks from it (see ModelListing).</para>
     /// </summary>
-    public string ModelName => Model.Trim();
+    public string ModelName => (Model ?? "").Trim();
 
     /// <summary>Runs on a machine of the capsuleer's own, and so costs nothing to use.</summary>
-    public bool IsLocal => Provider == AgentProviderType.Local;
+    public bool IsLocal => AgentProviders.Default.Find(ProviderId)?.IsLocal == true;
 
     /// <summary>Its name, or what it is: "Claude — claude-opus-5", "Local — qwen3:8b on gpu-box".</summary>
-    public string Label => Name.Trim().Length > 0 ? Name.Trim() : Describe();
+    public string Label => !string.IsNullOrWhiteSpace(Name) ? Name.Trim() : Describe();
 
-    public string Describe()
-    {
-        var model = ModelName.Length > 0 ? ModelName : SettingsText.ModelNoneChosen;
-        return Provider switch
-        {
-            AgentProviderType.Claude => $"Claude — {model}",
-            AgentProviderType.OpenAI => $"OpenAI — {model}",
-            _ => Uri.TryCreate(Endpoint.Trim(), UriKind.Absolute, out var uri)
-                ? string.Format(SettingsText.ModelDescribeLocalOn, model, uri.Host)
-                : string.Format(SettingsText.ModelDescribeLocal, model),
-        };
-    }
+    public string Describe() => AgentProviders.Default.Describe(this);
 }
 
 /// <summary>A role's model, and the model to fall over to when it stops answering.</summary>

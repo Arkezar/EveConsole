@@ -1,5 +1,4 @@
 using System.Text.Json;
-using EveConsole.Agent.Providers;
 using EveConsole.Agent.Tools;
 using EveConsole.Agent.Tools.Actions;
 using EveConsole.Agent.Tools.Data;
@@ -13,7 +12,7 @@ public enum PromptScope { Full, Conversation }
 
 public sealed class AgentService : ReactiveObject
 {
-    private static readonly string SettingsPath = Path.Combine(
+    private static string SettingsPath => Path.Combine(
         AppConfig.AppDataDir, "agent-settings.json");
 
     private static readonly JsonSerializerOptions _jsonOpts = new() { WriteIndented = true };
@@ -21,6 +20,7 @@ public sealed class AgentService : ReactiveObject
     private AgentSettings _settings = new();
 
     public AgentSettings Settings => _settings;
+    public AgentProviders Providers { get; }
 
     /// <summary>The models behind the agent, by role, and which one answers for each right now.</summary>
     public ModelRoles Roles { get; } = new();
@@ -409,7 +409,11 @@ public sealed class AgentService : ReactiveObject
         "get_assets", "get_character_info", "get_industry_jobs", "get_market_prices", "search_items",
     };
 
-    public AgentService() => Load();
+    public AgentService(AgentProviders? providers = null)
+    {
+        Providers = providers ?? AgentProviders.Default;
+        Load();
+    }
 
     /// <summary>
     /// The shared preferences table, where the half of the settings that describe the CAPSULEER
@@ -784,24 +788,5 @@ public sealed class AgentService : ReactiveObject
         return local;
     }
 
-    private void ConfigureRoles() => Roles.Configure(_settings, m => BuildProvider(m, _settings));
-
-    /// <summary>
-    /// What answers for one model, with the keys on <paramref name="keys"/> — null when it is not
-    /// set up: no model chosen, no key for its service, no address for a server of our own.
-    ///
-    /// <para>⚠️ Every service the settings tab offers has to build something here. OpenAI and
-    /// Local were selectable for months with no provider behind them, so choosing either yielded
-    /// "not configured" — and nothing said why until a message was sent.</para>
-    /// </summary>
-    public static IAgentProvider? BuildProvider(ModelProfile m, AgentSettings keys) => m.ModelName.Length == 0 ? null : m.Provider switch
-    {
-        AgentProviderType.Claude when !string.IsNullOrWhiteSpace(keys.ClaudeApiKey)
-            => new ClaudeProvider(keys.ClaudeApiKey, m.ModelName, keys.ClaudeCacheTtl),
-        AgentProviderType.OpenAI when !string.IsNullOrWhiteSpace(keys.OpenAiApiKey)
-            => OpenAiCompatibleProvider.OpenAi(keys.OpenAiApiKey, m.ModelName),
-        AgentProviderType.Local when !string.IsNullOrWhiteSpace(m.Endpoint)
-            => OpenAiCompatibleProvider.Local(m.Endpoint, m.ModelName, think: m.Think),
-        _ => null,
-    };
+    private void ConfigureRoles() => Roles.Configure(_settings, m => Providers.Build(m, _settings));
 }

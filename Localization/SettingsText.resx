@@ -4,6 +4,39 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ProviderKeyLabel" xml:space="preserve">
+    <value>{0} API key</value>
+    <comment>{0} is a provider's name.</comment>
+  </data>
+  <data name="ProviderKeyHelp" xml:space="preserve">
+    <value>This key is shared by all models using this provider.</value>
+  </data>
+  <data name="ProviderGetKey" xml:space="preserve">
+    <value>Get a key</value>
+  </data>
+  <data name="ProviderModelsFoundOne" xml:space="preserve">
+    <value>{0} model from {1}.</value>
+    <comment>{0} is a count; {1} is a provider's name.</comment>
+  </data>
+  <data name="ProviderModelsFoundOther" xml:space="preserve">
+    <value>{0} models from {1}.</value>
+    <comment>{0} is a count; {1} is a provider's name.</comment>
+  </data>
+  <data name="ProviderChoicePaid" xml:space="preserve">
+    <value>{0} (paid)</value>
+    <comment>{0} is a provider's name.</comment>
+  </data>
+  <data name="ProviderNeedKey" xml:space="preserve">
+    <value>Enter the {0} key to choose or use its models.</value>
+    <comment>{0} is a provider's name, not the key.</comment>
+  </data>
+  <data name="ProviderInvalidEndpoint" xml:space="preserve">
+    <value>Enter an HTTP or HTTPS server address without credentials, a query, or a fragment.</value>
+  </data>
+  <data name="ProviderUnsupported" xml:space="preserve">
+    <value>Provider “{0}” is unavailable in this build.</value>
+    <comment>{0} is the saved provider identifier, not a credential.</comment>
+  </data>
   <data name="WindowTitle" xml:space="preserve">
     <value>Settings</value>
   </data>

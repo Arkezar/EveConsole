@@ -1963,31 +1963,20 @@
                           <TextBlock Text="{x:Static loc:SettingsText.Service}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0 4 0 0" />
                           <ComboBox ItemsSource="{Binding ServiceOptions}" SelectedItem="{Binding SelectedService}" HorizontalAlignment="Stretch" />
 
-                          <!-- The service's key, before the model: the list of models is asked for with
-                               it. One key per service, shared by every model on it. -->
-                          <StackPanel IsVisible="{Binding ShowClaude}" Spacing="8">
-                            <TextBlock Text="{x:Static loc:SettingsText.ClaudeAnthropicApiKey}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBox Text="{Binding Owner.ClaudeApiKey}" Watermark="{x:Static loc:SettingsText.HintSkAnt}" PasswordChar="•" />
+                          <!-- Ordinary setup follows the same provider definition as discovery and execution. -->
+                          <StackPanel IsVisible="{Binding ShowApiKey}" Spacing="8">
+                            <TextBlock Text="{Binding ApiKeyLabel}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBox Text="{Binding ApiKey}" PasswordChar="•" />
                             <TextBlock FontSize="10" Foreground="{DynamicResource BorderStrongBrush}" TextWrapping="Wrap"
-                                       Text="{x:Static loc:SettingsText.OneKeyForEveryNote}" />
-                            <HyperlinkButton Content="{x:Static loc:SettingsText.GetYourAnthropicApi}"
-                                             NavigateUri="https://console.anthropic.com/settings/keys"
-                                             FontSize="10" Padding="0" HorizontalAlignment="Left" />
-                          </StackPanel>
-
-                          <StackPanel IsVisible="{Binding ShowOpenAi}" Spacing="8">
-                            <TextBlock Text="{x:Static loc:SettingsText.OpenaiApiKey}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBox Text="{Binding Owner.OpenAiApiKey}" Watermark="{x:Static loc:SettingsText.HintSk}" PasswordChar="•" />
-                            <TextBlock FontSize="10" Foreground="{DynamicResource BorderStrongBrush}" TextWrapping="Wrap"
-                                       Text="{x:Static loc:SettingsText.OneKeyForEveryNote2}" />
-                            <HyperlinkButton Content="{x:Static loc:SettingsText.GetYourOpenaiApi}"
-                                             NavigateUri="https://platform.openai.com/api-keys"
+                                       Text="{x:Static loc:SettingsText.ProviderKeyHelp}" />
+                            <HyperlinkButton Content="{x:Static loc:SettingsText.ProviderGetKey}" NavigateUri="{Binding ApiKeyUrl}"
+                                             IsVisible="{Binding ApiKeyUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                              FontSize="10" Padding="0" HorizontalAlignment="Left" />
                           </StackPanel>
 
                           <StackPanel IsVisible="{Binding ShowEndpoint}" Spacing="8">
                             <TextBlock Text="{x:Static loc:SettingsText.ServerAddress}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBox Text="{Binding Endpoint}" Watermark="http://gpu-box:11434" />
+                            <TextBox Text="{Binding Endpoint}" Watermark="{Binding EndpointWatermark}" />
                           </StackPanel>
 
                           <!-- The model, from the service's own list; typed only when there is no list. -->
@@ -2013,7 +2002,7 @@
                           <TextBlock Text="{Binding ModelHelp}" IsVisible="{Binding ModelHelp, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                      FontSize="10" Foreground="{DynamicResource BorderStrongBrush}" TextWrapping="Wrap" />
 
-                          <StackPanel IsVisible="{Binding ShowEndpoint}" Spacing="4">
+                          <StackPanel IsVisible="{Binding ShowThink}" Spacing="4">
                             <CheckBox IsChecked="{Binding Think}" Content="{x:Static loc:SettingsText.LetItThinkBeforeAnswering}" />
                             <TextBlock FontSize="10" Foreground="{DynamicResource BorderStrongBrush}" TextWrapping="Wrap"
                                        Text="{x:Static loc:SettingsText.ForModelsThatThinkNote}" />

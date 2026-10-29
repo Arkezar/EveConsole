@@ -8,7 +8,7 @@ namespace EveConsole.Agent.Providers;
 
 public sealed class ClaudeProvider : IAgentProvider
 {
-    private const string Endpoint         = "https://api.anthropic.com/v1/messages";
+    private const string DefaultBase      = "https://api.anthropic.com/v1/";
     private const string AnthropicVersion = "2023-06-01";
     /// <summary>
     /// How many times a single question may go back to the model after using a tool.
@@ -81,19 +81,22 @@ public sealed class ClaudeProvider : IAgentProvider
 
     private readonly string _apiKey;
     private readonly string _model;
+    private readonly string _baseUrl;
 
     /// <summary>What usage is recorded and priced under — see ServiceRate.</summary>
     public const string ServiceName = "Claude (Anthropic)";
 
-    public string ProviderName => ServiceName;
+    public string ProviderName { get; }
     public bool   IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) && !string.IsNullOrWhiteSpace(_model);
 
     /// <param name="model">As Anthropic's model list names it. No default: see ModelListing.</param>
     /// <param name="cacheTtl">"5m" or "1h"; anything else is the default.</param>
-    public ClaudeProvider(string apiKey, string model, string cacheTtl = "5m")
+    public ClaudeProvider(string apiKey, string model, string cacheTtl = "5m", string? baseUrl = null, string providerName = ServiceName)
     {
         _apiKey    = apiKey;
         _model     = model;
+        _baseUrl   = (baseUrl ?? DefaultBase).Trim().TrimEnd('/') + "/";
+        ProviderName = providerName;
         _hourCache = string.Equals(cacheTtl, "1h", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -203,7 +206,7 @@ public sealed class ClaudeProvider : IAgentProvider
             // request it refused. EnsureSuccessStatusCode kept the status and threw the words away.
             var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             throw new HttpRequestException(
-                $"Claude returned {(int)response.StatusCode}: {(body.Length > 400 ? body[..400] + "…" : body)}",
+                $"{ProviderName} returned {(int)response.StatusCode}: {ErrorMessage(body, _apiKey)}",
                 null, response.StatusCode);
         }
 
@@ -315,7 +318,7 @@ public sealed class ClaudeProvider : IAgentProvider
                     var err     = root.TryGetProperty("error", out var e) ? e : root;
                     var kind    = err.TryGetProperty("type",    out var k) ? k.GetString() ?? "" : "";
                     var message = err.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
-                    throw new HttpRequestException($"Claude stream error: {kind} — {message}", null,
+                    throw new HttpRequestException($"{ProviderName} stream error: {kind} — {ErrorMessage(message, _apiKey)}", null,
                         kind == "overloaded_error" ? (System.Net.HttpStatusCode)529
                         : kind == "rate_limit_error" ? System.Net.HttpStatusCode.TooManyRequests
                         : kind is "invalid_request_error" ? System.Net.HttpStatusCode.BadRequest
@@ -536,7 +539,7 @@ public sealed class ClaudeProvider : IAgentProvider
             ? (object)new { model = _model, max_tokens = MaxOutputTokens, system = systemBlocks, messages, tools = toolDefs, stream = true }
             : new { model = _model, max_tokens = MaxOutputTokens, system = systemBlocks, messages, stream = true };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, Endpoint)
+        var request = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "messages")
         {
             Content = new StringContent(JsonSerializer.Serialize(bodyObj), Encoding.UTF8, "application/json"),
         };
@@ -558,7 +561,7 @@ public sealed class ClaudeProvider : IAgentProvider
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(10));
-            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.anthropic.com/v1/models?limit=1");
+            using var request = new HttpRequestMessage(HttpMethod.Get, _baseUrl + "models?limit=1");
             request.Headers.Add("x-api-key",         _apiKey);
             request.Headers.Add("anthropic-version", AnthropicVersion);
             using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token)
@@ -574,7 +577,8 @@ public sealed class ClaudeProvider : IAgentProvider
     /// settings tab's choice, so no model's name is written into the app to go stale. Free to
     /// call. Throws with the service's own words when it refuses: a key it does not accept, say.
     /// </summary>
-    public static async Task<IReadOnlyList<ModelListing>> ListModelsAsync(string apiKey, CancellationToken ct = default)
+    public static async Task<IReadOnlyList<ModelListing>> ListModelsAsync(
+        string apiKey, CancellationToken ct = default, string? baseUrl = null, string providerName = ServiceName)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
@@ -583,7 +587,7 @@ public sealed class ClaudeProvider : IAgentProvider
         string? after = null;
         do
         {
-            var url = "https://api.anthropic.com/v1/models?limit=1000" + (after is null ? "" : "&after_id=" + Uri.EscapeDataString(after));
+            var url = (baseUrl ?? DefaultBase).Trim().TrimEnd('/') + "/models?limit=1000" + (after is null ? "" : "&after_id=" + Uri.EscapeDataString(after));
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("x-api-key",         apiKey);
             request.Headers.Add("anthropic-version", AnthropicVersion);
@@ -591,7 +595,7 @@ public sealed class ClaudeProvider : IAgentProvider
             var body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException(
-                    $"Anthropic answered {(int)response.StatusCode}: {ErrorMessage(body)}", null, response.StatusCode);
+                    $"{providerName} answered {(int)response.StatusCode}: {ErrorMessage(body, apiKey)}", null, response.StatusCode);
 
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
@@ -613,8 +617,9 @@ public sealed class ClaudeProvider : IAgentProvider
     }
 
     /// <summary>The message in an error answer — {"error": {"message": "…"}} — or the answer itself.</summary>
-    private static string ErrorMessage(string body)
+    private static string ErrorMessage(string body, string apiKey)
     {
+        if (apiKey.Length > 0) body = body.Replace(apiKey, "[redacted]", StringComparison.Ordinal);
         try
         {
             using var doc = JsonDocument.Parse(body);

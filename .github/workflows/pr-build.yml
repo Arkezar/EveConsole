@@ -1,3 +1,5 @@
+# Keep the existing prose and shell commands readable without forced wrapping.
+# yamllint disable rule:line-length
 name: PR Build
 
 on:
@@ -69,6 +71,13 @@ jobs:
       # back to it.
       - name: Agent stream check
         run: dotnet run --project tools/AgentStreamCheck/AgentStreamCheck.csproj -c Release
+
+      # Provider setup must agree across discovery, execution and migration.
+      - name: Agent provider check
+        run: >-
+          dotnet run
+          --project tools/AgentProviderCheck/AgentProviderCheck.csproj
+          -c Release
 
       # ⚠️ Does the web store's copy of the palette still match Themes/Palette.axaml? A store's
       # site is themed from WebThemes, a table of the XAML's colours — a copy, because the site

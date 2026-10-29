@@ -131,7 +131,8 @@ public sealed class ModelRoles : IDisposable
         var signature = JsonSerializer.Serialize(new
         {
             s.Models, s.ConversationRole, s.AnalystRole, s.SummaryModelId,
-            s.ClaudeApiKey, s.ClaudeCacheTtl, s.OpenAiApiKey,
+            ProviderConfigurations = s.Models.Select(m => m.ProviderId).Distinct().Order()
+                .ToDictionary(id => id, s.ConfigurationFor),
         });
 
         lock (_gate)

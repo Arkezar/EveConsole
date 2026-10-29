@@ -15,7 +15,7 @@ namespace EveConsole.ViewModels;
 /// listed is chosen. With no list — no key yet, no answer — the reason shows, and the value is
 /// typed instead.</para>
 /// </summary>
-public sealed class ServiceListChoice : ReactiveObject
+public sealed class ServiceListChoice : ReactiveObject, IDisposable
 {
     /// <summary>What to ask the service, or why it cannot be asked.</summary>
     /// <param name="Cannot">Why there is no list to ask for: no key yet, no address.</param>
@@ -107,10 +107,20 @@ public sealed class ServiceListChoice : ReactiveObject
 
     private string _asked = "";
     private CancellationTokenSource? _loading;
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _loading?.Cancel();
+        _loading?.Dispose();
+    }
 
     /// <summary>Asks the service, unless it was just asked the same.</summary>
     public async Task LoadAsync(bool force = false)
     {
+        if (_disposed) return;
         var source = _source();
         if (!force && source.Question.Length > 0 && source.Question == _asked) return;
 

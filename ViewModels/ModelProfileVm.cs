@@ -3,87 +3,87 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Windows.Input;
 using EveConsole.Agent;
-using EveConsole.Agent.Providers;
 using EveConsole.Services;
 using ReactiveUI;
 using EveConsole.Localization;
 
 namespace EveConsole.ViewModels;
 
-/// <summary>
-/// An entry in a role's list: a model, or "None" / "Same as conversation". The models themselves
-/// are the entries, so a rename shows in every list as it is typed.
-/// </summary>
+/// <summary>A model in a role's list, or a fixed "None" / "Same as conversation" entry.</summary>
 public abstract class ModelChoice : ReactiveObject
 {
-    /// <summary>The model's id; empty for the fixed entries.</summary>
     public abstract string Id    { get; }
     public abstract string Label { get; }
 }
 
-/// <summary>"None" or "Same as conversation".</summary>
 public sealed class FixedModelChoice(string label) : ModelChoice
 {
     public override string Id    => "";
     public override string Label => label;
 }
 
-/// <summary>
-/// One model on the settings tab: what it is called, which service runs it, its model name and —
-/// for a server of the capsuleer's own — its address. The keys are per service, kept on the tab
-/// and shown with whichever model uses that service.
-/// </summary>
-public sealed class ModelProfileVm : ModelChoice
+/// <summary>A model's editable profile; provider-wide setup is shared through its owner.</summary>
+public sealed class ModelProfileVm : ModelChoice, IDisposable
 {
     private readonly AgentSettingsViewModel _owner;
-
-    /// <summary>The settings tab, for what belongs to a service rather than a model: its key.</summary>
+    private readonly ModelProfile _original;
+    private readonly IDisposable _relistSubscription;
     public AgentSettingsViewModel Owner => _owner;
+    public override string Id => _original.Id;
+    private AgentProviderDefinition? Definition => _owner.Providers.Find(_providerId);
 
-    /// <summary>What the roles refer to it by; kept through every edit.</summary>
-    public override string Id { get; }
-
-    public ModelProfileVm(AgentSettingsViewModel owner, ModelProfile p)
+    public ModelProfileVm(AgentSettingsViewModel owner, ModelProfile profile)
     {
-        _owner    = owner;
-        Id        = p.Id;
-        _name     = p.Name;
-        _provider = p.Provider;
-        _model    = p.Model;
-        _endpoint = p.Endpoint;
-        _think    = p.Think;
-        TestModelCommand   = ReactiveCommand.CreateFromTask(TestAsync);
-        ModelList = new ServiceListChoice(() => _model, id => Model = id, ListSource, ListFound, ListEmpty,
-                                          ServiceListChoice.Holds.Models, SettingsText.TypeModelNameInstead, Listed);
-        _relist.Throttle(TimeSpan.FromMilliseconds(700))
+        _owner = owner;
+        _original = profile.Clone();
+        _name = profile.Name;
+        _providerId = profile.ProviderId;
+        // Replacing items during selection makes the ComboBox write its old choice back.
+        ServiceOptions = [.. owner.Providers.Definitions.Select(d => new ServiceOption(d.Id, d.Label))];
+        if (Definition is null)
+            ServiceOptions = [.. ServiceOptions, new(_providerId, string.Format(SettingsText.ProviderUnsupported, _providerId))];
+        _model = profile.Model;
+        _endpoint = profile.Endpoint;
+        _think = profile.Think;
+        TestModelCommand = ReactiveCommand.CreateFromTask(TestAsync);
+        ModelList = new ServiceListChoice(() => _model, id => Model = id, ListSource,
+            n => Plurals.Format(SettingsText.ResourceManager, nameof(SettingsText.ProviderModelsFoundOther), n, Definition?.Name ?? _providerId),
+            () => Definition?.IsLocal == true ? SettingsText.ModelListEmptyLocal : SettingsText.ModelListEmpty,
+            ServiceListChoice.Holds.Models, SettingsText.TypeModelNameInstead, Listed);
+        _relistSubscription = _relist.Throttle(TimeSpan.FromMilliseconds(700))
                .ObserveOnUi("model list")
                .Subscribe(settled => { if (ReferenceEquals(_owner.SelectedModel, this)) _ = ModelList.LoadAsync(); });
     }
 
-    public ModelProfile ToProfile() => new()
+    public void Dispose()
     {
-        Id       = Id,
-        Name     = (_name ?? "").Trim(),
-        Provider = _provider,
-        Model    = (_model ?? "").Trim(),
-        Endpoint = (_endpoint ?? "").Trim(),
-        Think    = _think,
-    };
+        _relistSubscription.Dispose();
+        _relist.Dispose();
+        ModelList.Dispose();
+    }
 
-    /// <summary>What the lists show: its name or what it is, and whether it costs money to use.</summary>
-    public override string Label => _provider == AgentProviderType.Local
-        ? string.Format(SettingsText.ModelLabelFree, ToProfile().Label)
-        : string.Format(SettingsText.ModelLabelPaid, ToProfile().Label);
+    public ModelProfile ToProfile()
+    {
+        // Keep unsupported settings as well as the fields this build knows how to edit.
+        var profile = _original.Clone();
+        profile.Name = (_name ?? "").Trim();
+        profile.ProviderId = _providerId;
+        profile.Model = (_model ?? "").Trim();
+        profile.Endpoint = (_endpoint ?? "").Trim();
+        profile.Think = _think;
+        return profile;
+    }
 
-    /// <summary>Something the lists show was edited. (Not "Changed": that is ReactiveObject's own
-    /// observable, and a method of that name hid it.)</summary>
+    public override string Label => Definition is null ? NameWatermark
+        : string.Format(Definition.IsLocal ? SettingsText.ModelLabelFree : SettingsText.ModelLabelPaid,
+            !string.IsNullOrWhiteSpace(_name) ? _name.Trim() : NameWatermark);
+
     private void Edited()
     {
         this.RaisePropertyChanged(nameof(Label));
+        this.RaisePropertyChanged(nameof(NameWatermark));
         _owner.OnModelsChanged();
     }
-
-    // ── Who ───────────────────────────────────────────────────────────────────
 
     private string _name;
     public string Name
@@ -91,60 +91,86 @@ public sealed class ModelProfileVm : ModelChoice
         get => _name;
         set { this.RaiseAndSetIfChanged(ref _name, value); Edited(); }
     }
+    public string NameWatermark => _owner.Providers.Describe(ToProfile());
 
-    public string NameWatermark => ToProfile() is var p ? p.Describe() : "";
-
-    // ── Service ───────────────────────────────────────────────────────────────
-
-    /// <summary>A service as the list shows it.</summary>
-    public sealed record ServiceOption(AgentProviderType Provider, string Label)
+    public sealed record ServiceOption(string Id, string Label)
     {
         public override string ToString() => Label;
     }
 
-    /// <summary>The free one first.</summary>
-    public static IReadOnlyList<ServiceOption> Services { get; } =
-    [
-        new(AgentProviderType.Local,  SettingsText.ModelServiceLocal),
-        new(AgentProviderType.Claude, SettingsText.ModelServiceClaude),
-        new(AgentProviderType.OpenAI, SettingsText.ModelServiceOpenAi),
-    ];
-
-    public IReadOnlyList<ServiceOption> ServiceOptions => Services;
+    public IReadOnlyList<ServiceOption> ServiceOptions { get; }
 
     public ServiceOption? SelectedService
     {
-        get => Services.FirstOrDefault(s => s.Provider == _provider);
-        set { if (value is not null && value.Provider != _provider) Provider = value.Provider; }
+        get => ServiceOptions.FirstOrDefault(s => s.Id == _providerId);
+        set { if (value is not null && value.Id != _providerId) ProviderId = value.Id; }
     }
 
-    private AgentProviderType _provider;
-    public AgentProviderType Provider
+    private string _providerId;
+    public string ProviderId
     {
-        get => _provider;
+        get => _providerId;
         set
         {
-            this.RaiseAndSetIfChanged(ref _provider, value);
-            this.RaisePropertyChanged(nameof(SelectedService));
-            this.RaisePropertyChanged(nameof(ShowEndpoint));
-            this.RaisePropertyChanged(nameof(ShowClaude));
-            this.RaisePropertyChanged(nameof(ShowOpenAi));
-            this.RaisePropertyChanged(nameof(ModelWatermark));
-            this.RaisePropertyChanged(nameof(ModelHelp));
-            this.RaisePropertyChanged(nameof(NameWatermark));
+            if (value == _providerId) return;
+            this.RaiseAndSetIfChanged(ref _providerId, value);
+            foreach (var property in new[] { nameof(SelectedService), nameof(ShowApiKey),
+                nameof(ShowEndpoint), nameof(ShowThink), nameof(ShowClaude), nameof(ApiKeyLabel), nameof(ApiKeyUrl),
+                nameof(EndpointWatermark), nameof(ModelWatermark), nameof(ModelHelp) })
+                this.RaisePropertyChanged(property);
+            RefreshProviderSettings();
             Edited();
-            // A model's name belongs to its service: another service, another list to choose from,
-            // and its first offered once it arrives.
             Model = "";
             _ = ModelList.LoadAsync();
         }
     }
 
-    public bool ShowEndpoint => _provider == AgentProviderType.Local;
-    public bool ShowClaude   => _provider == AgentProviderType.Claude;
-    public bool ShowOpenAi   => _provider == AgentProviderType.OpenAI;
+    public bool ShowApiKey => Definition?.RequiresApiKey == true;
+    public bool ShowEndpoint => Definition is not null;
+    public bool ShowThink => Definition?.IsLocal == true;
+    public bool ShowClaude => _providerId == AgentProviders.Claude;
+    public string ApiKeyLabel => string.Format(SettingsText.ProviderKeyLabel, Definition?.Name ?? _providerId);
+    public string ApiKeyUrl => Definition?.KeyUrl ?? "";
+    public string EndpointWatermark => Definition?.IsLocal == true ? "http://gpu-box:11434" : Definition?.BaseUrl ?? "";
 
-    // ── Model ─────────────────────────────────────────────────────────────────
+    public string ApiKey
+    {
+        get => _owner.ProviderSettings.ConfigurationFor(_providerId).ApiKey;
+        set
+        {
+            if (value == ApiKey) return;
+            _owner.ProviderSettings.ConfigurationFor(_providerId).ApiKey = value;
+            _owner.ProviderEdited(_providerId);
+        }
+    }
+
+    internal void RefreshProviderSettings()
+    {
+        this.RaisePropertyChanged(nameof(ApiKey));
+        this.RaisePropertyChanged(nameof(Endpoint));
+        KeyChanged();
+    }
+
+    private string _endpoint;
+    public string Endpoint
+    {
+        get => Definition?.IsLocal == true ? _endpoint : _owner.ProviderSettings.ConfigurationFor(_providerId).Endpoint;
+        set
+        {
+            if (value == Endpoint) return;
+            if (Definition?.IsLocal == true)
+            {
+                this.RaiseAndSetIfChanged(ref _endpoint, value);
+                KeyChanged();
+            }
+            else
+            {
+                _owner.ProviderSettings.ConfigurationFor(_providerId).Endpoint = value;
+                _owner.ProviderEdited(_providerId);
+            }
+            Edited();
+        }
+    }
 
     private string _model;
     public string Model
@@ -153,125 +179,61 @@ public sealed class ModelProfileVm : ModelChoice
         set
         {
             this.RaiseAndSetIfChanged(ref _model, value);
-            this.RaisePropertyChanged(nameof(NameWatermark));
             ModelList.ValueChanged();
             Edited();
         }
     }
-
-    /// <summary>For typing a name, when the service's list cannot be had.</summary>
-    public string ModelWatermark => _provider == AgentProviderType.Local ? SettingsText.ModelHintServerNames : SettingsText.ModelHintServiceNames;
-
-    public string ModelHelp => _provider == AgentProviderType.Local
-        ? SettingsText.ModelHelpLocal
-        : "";
-
-    private string _endpoint;
-    /// <summary>The server's root: http://gpu-box:11434 for Ollama.</summary>
-    public string Endpoint
-    {
-        get => _endpoint;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _endpoint, value);
-            this.RaisePropertyChanged(nameof(NameWatermark));
-            Edited();
-            _relist.OnNext(Unit.Default);
-        }
-    }
-
-    // ── The service's own list of models ──────────────────────────────────────
-    //
-    // ⚠️ Asked of the service, never written here: a list in the source is out of date by the
-    // time it ships (see ModelListing). Loaded when the model is selected on the tab, and again
-    // once its key or address has stopped changing.
-
-    /// <summary>The model, chosen from what its service lists.</summary>
+    public string ModelWatermark => Definition?.IsLocal == true ? SettingsText.ModelHintServerNames : SettingsText.ModelHintServiceNames;
+    public string ModelHelp => Definition?.IsLocal == true ? SettingsText.ModelHelpLocal : "";
     public ServiceListChoice ModelList { get; }
-
-    /// <summary>A key or an address being typed: the list is asked for once it settles.</summary>
     private readonly Subject<Unit> _relist = new();
-
-    /// <summary>The owner's key for this model's service changed.</summary>
     internal void KeyChanged() => _relist.OnNext(Unit.Default);
 
-    /// <summary>What to ask this model's service for, as things stand on the tab.</summary>
     private ServiceListChoice.Source ListSource()
     {
-        var key = _provider switch
-        {
-            AgentProviderType.Claude => _owner.ClaudeApiKey.Trim(),
-            AgentProviderType.OpenAI => _owner.OpenAiApiKey.Trim(),
-            _                        => "",
-        };
-        var endpoint = (_endpoint ?? "").Trim();
-        var question = $"{_provider}|{endpoint}|{key.Length}:{key.GetHashCode()}";   // not the key itself
-        return _provider switch
-        {
-            AgentProviderType.Claude when key.Length == 0      => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedClaudeKey, question),
-            AgentProviderType.OpenAI when key.Length == 0      => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedOpenAiKey, question),
-            AgentProviderType.Local  when endpoint.Length == 0 => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedServerAddress, question),
-            AgentProviderType.Claude => new(null, question, ct => ClaudeProvider.ListModelsAsync(key, ct)),
-            AgentProviderType.OpenAI => new(null, question, ct => OpenAiCompatibleProvider.ListOpenAiModelsAsync(key, ct)),
-            _                        => new(null, question, ct => OpenAiCompatibleProvider.ListLocalModelsAsync(endpoint, ct)),
-        };
+        var model = ToProfile();
+        var settings = _owner.ProviderSettings.Clone();
+        var configuration = settings.ConfigurationFor(_providerId);
+        var question = $"{_providerId}|{HashCode.Combine(_owner.Providers.Endpoint(model, settings), configuration.ApiKey, configuration.CacheTtl)}";
+        return _owner.Providers.Validate(model, settings, requireModel: false) is { } why
+            ? ServiceListChoice.Source.Unavailable(why, question)
+            : new(null, question, ct => _owner.Providers.ListModelsAsync(model, settings, ct));
     }
 
-    /// <summary>A paid service's list: a rate row for each model on it. A server of our own is free.</summary>
     private void Listed(IReadOnlyList<ModelListing> listed)
     {
-        if (_provider == AgentProviderType.Claude)      _owner.AddListedRates(ListedRates.ClaudeChat, listed);
-        else if (_provider == AgentProviderType.OpenAI) _owner.AddListedRates(ListedRates.OpenAiChat, listed);
+        if (Definition is { IsLocal: false } definition) _owner.AddListedRates(("llm", definition.Name), listed);
     }
 
-    private string ListFound(int n) => _provider switch
-    {
-        AgentProviderType.Claude => string.Format(SettingsText.ModelListFoundClaude, n),
-        AgentProviderType.OpenAI => string.Format(SettingsText.ModelListFoundOpenAi, n),
-        _                        => string.Format(SettingsText.ModelListFoundLocal, n),
-    };
-
-    private string ListEmpty() => _provider == AgentProviderType.Local
-        ? SettingsText.ModelListEmptyLocal
-        : SettingsText.ModelListEmpty;
-
     private bool _think;
-    /// <summary>A local reasoning model may think before it answers — slower, never shown.</summary>
     public bool Think
     {
         get => _think;
         set => this.RaiseAndSetIfChanged(ref _think, value);
     }
 
-    // ── Trying it ─────────────────────────────────────────────────────────────
-
     public ICommand TestModelCommand { get; }
-
     private string _testStatus = "";
-    /// <summary>"Testing…", then how long it took to answer and what it said — or why it could not.</summary>
     public string TestStatus
     {
         get => _testStatus;
         private set { this.RaiseAndSetIfChanged(ref _testStatus, value); this.RaisePropertyChanged(nameof(HasTestStatus)); }
     }
-
     public bool HasTestStatus => _testStatus.Length > 0;
-
     private bool _testOk;
     public bool TestOk { get => _testOk; private set => this.RaiseAndSetIfChanged(ref _testOk, value); }
-
     private bool _testFailed;
     public bool TestFailed { get => _testFailed; private set => this.RaiseAndSetIfChanged(ref _testFailed, value); }
 
     private async Task TestAsync()
     {
-        TestOk     = false;
+        TestOk = false;
         TestFailed = false;
         TestStatus = SettingsText.Testing;
         (bool Ok, string Message) result;
-        try   { result = await _owner.TestModelAsync(this); }
+        try { result = await _owner.TestModelAsync(this); }
         catch (Exception ex) { result = (false, ex.GetBaseException().Message); }
-        TestOk     = result.Ok;
+        TestOk = result.Ok;
         TestFailed = !result.Ok;
         TestStatus = result.Message;
     }

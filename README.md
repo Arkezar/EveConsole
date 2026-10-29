@@ -219,6 +219,14 @@ Keep in mind this application is still very green.  You are free to play around 
 - Customizable name and voices
 - AI Usage - What the agent has cost you, call by call
 
+Model profiles for the same provider share one provider configuration. Local model profiles can
+still use different servers. OpenAI models, voices and transcription share one API key.
+
+Provider configurations in `agent-settings.json` now use stable provider IDs. Existing settings
+migrate automatically, with compatibility fields for Claude, OpenAI and Local.
+**Before a downgrade, back up `agent-settings.json`. Older builds can discard provider configurations
+and model references that they do not understand.**
+
 ---
 
 ## Tech stack

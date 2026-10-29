@@ -1423,7 +1423,7 @@ public class MainWindowViewModel : ReactiveObject
         AgentUsageVm         = new AgentUsageViewModel(dbFactory, errorLogger);
         // A model a paid service has added gets a rate row of its own when the tool is opened.
         AgentUsageVm.SyncListedRates = ct => agentService.Telemetry is { } telemetry
-            ? EveConsole.Agent.ListedRates.SyncAsync(agentService.Settings, telemetry, ct)
+            ? EveConsole.Agent.ListedRates.SyncAsync(agentService.Settings, telemetry, ct, agentService.Providers)
             : Task.FromResult(0);
         GameLogViewerVm      = new GameLogViewerViewModel(dbFactory, errorLogger);
         ChatLogViewerVm      = new ChatLogViewerViewModel(dbFactory, errorLogger, monitoringSettings);
