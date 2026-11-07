@@ -129,11 +129,16 @@ public class BuildCostService
 
         var stream = await response.Content.ReadAsStreamAsync(ct);
         var dtos = await JsonSerializer.DeserializeAsync<List<EsiIndustrySystemDto>>(stream, JsonOpts, ct);
-        if (dtos is null) return;
+        // An empty answer is not "no system has an index": keep the last snapshot rather than none.
+        if (dtos is null || dtos.Count == 0) return;
 
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // ⚠️ One transaction, as the build costs are stored: ExecuteDeleteAsync commits on its own, so
+        // between it and the insert every reader saw no index at all — and a wormhole's hand-entered
+        // value would have priced known space too.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.IndustryCostIndices.ExecuteDeleteAsync(ct);
         db.IndustryCostIndices.AddRange(
             dtos.SelectMany(s => s.CostIndices.Select(ci => new IndustryCostIndex
@@ -143,6 +148,7 @@ public class BuildCostService
                 CostIndex     = ci.CostIndex,
             })));
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 
     /// <summary>
