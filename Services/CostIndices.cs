@@ -1,4 +1,6 @@
+using System.Globalization;
 using EveConsole.Data;
+using EveConsole.Localization;
 using EveConsole.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -88,6 +90,25 @@ public static class CostIndices
         }
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Reads a percentage as a person typed it, in the interface's number format: "1.25", or
+    /// "1,25" where decimals take a comma, is 0.0125. Blank reads as null — no value, which is
+    /// not zero. False for anything that is not a number from 0 to 100.
+    /// </summary>
+    public static bool TryReadPercent(string? text, out double? fraction)
+    {
+        fraction = null;
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        if (!NumberText.TryParse(text, out double percent) || !(percent >= 0 && percent <= 100)) return false;
+        fraction = percent / 100;
+        return true;
+    }
+
+    /// <summary>A fraction as an editable percentage in the interface's number format: 0.0125 is
+    /// "1.25". <see cref="TryReadPercent"/> reads it back to the same value.</summary>
+    public static string PercentText(double fraction) =>
+        (fraction * 100).ToString("0.####", CultureInfo.CurrentCulture);
 
     /// <summary>
     /// The pairs these jobs needed an index for and no source had, once each. A job whose

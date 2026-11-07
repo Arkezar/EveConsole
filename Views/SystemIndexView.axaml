@@ -34,7 +34,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="12 10">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="12 10">
 
     <!-- Toolbar: add a system, pick the activity the chart draws -->
     <WrapPanel Grid.Row="0" Orientation="Horizontal" ItemSpacing="12" LineSpacing="6">
@@ -63,7 +63,7 @@
     </Border>
 
     <!-- The table: every activity, today -->
-    <Grid Grid.Row="2" ColumnDefinitions="200,*,90,90,90,90,90,90,40" Margin="0 10 0 4" IsVisible="{Binding Systems.Count}">
+    <Grid Grid.Row="2" ColumnDefinitions="200,*,90,90,90,90,90,90,40,40" Margin="0 10 0 4" IsVisible="{Binding Systems.Count}">
       <TextBlock Grid.Column="0" Classes="head" HorizontalAlignment="Left" Text="{x:Static loc:IndustryText.IndexColSystem}" />
       <TextBlock Grid.Column="1" Classes="head" HorizontalAlignment="Left" Text="{x:Static loc:IndustryText.IndexColRegion}" />
       <TextBlock Grid.Column="2" Classes="head" Text="{x:Static loc:IndustryText.IndexManufacturing}" />
@@ -77,7 +77,7 @@
       <ItemsControl ItemsSource="{Binding Systems}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:SystemIndexRowVm">
-            <Grid ColumnDefinitions="200,*,90,90,90,90,90,90,40" Margin="0 2">
+            <Grid ColumnDefinitions="200,*,90,90,90,90,90,90,40,40" Margin="0 2">
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7">
                 <!-- Its colour in all six charts: the charts' one legend. -->
                 <Ellipse Width="9" Height="9" Fill="{Binding Swatch}" VerticalAlignment="Center" />
@@ -92,7 +92,11 @@
               <TextBlock Grid.Column="5" Classes="num" Text="{Binding Copying}" />
               <TextBlock Grid.Column="6" Classes="num" Text="{Binding MeResearch}" />
               <TextBlock Grid.Column="7" Classes="num" Text="{Binding TeResearch}" />
-              <Button Grid.Column="8" Classes="small" Content="✕" Foreground="{DynamicResource BadBrush}"
+              <Button Grid.Column="8" Classes="small" Content="✎" HorizontalAlignment="Right"
+                      Command="{Binding EditCommand}"
+                      ToolTip.Tip="{x:Static loc:IndustryText.IndexManualEditTip}"
+                      AutomationProperties.Name="{x:Static loc:IndustryText.IndexManualEditTip}" />
+              <Button Grid.Column="9" Classes="small" Content="✕" Foreground="{DynamicResource BadBrush}"
                       HorizontalAlignment="Right" Command="{Binding RemoveCommand}" />
             </Grid>
           </DataTemplate>
@@ -100,11 +104,59 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <TextBlock Grid.Row="4" Text="{Binding ChartNote}" FontSize="10.5" Foreground="{DynamicResource TextFaintBrush}"
+    <!-- What the mark on an index entered by hand means, and the panel for entering them. -->
+    <StackPanel Grid.Row="4" Spacing="4">
+      <TextBlock IsVisible="{Binding HasManualValues}" Text="{x:Static loc:IndustryText.IndexManualLegend}"
+                 FontSize="10.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap" Margin="0 4 0 0" />
+      <ContentControl Content="{Binding Editor}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ManualIndexEditorVm">
+            <Border Margin="0 6 0 0" Padding="10 8" CornerRadius="3" MaxWidth="620" HorizontalAlignment="Left"
+                    Background="{DynamicResource SurfacePanelBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{x:Static loc:IndustryText.IndexManualNote}" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextMutedBrush}" />
+                <ItemsControl ItemsSource="{Binding Fields}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ManualIndexFieldVm">
+                      <Grid ColumnDefinitions="170,120,*" Margin="0 2">
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                        <!-- ESI's own value wins, so it is shown and not entered over. -->
+                        <TextBlock Grid.Column="1" Classes="num" HorizontalAlignment="Left"
+                                   Text="{Binding EsiText}" IsVisible="{Binding FromEsi}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" IsVisible="{Binding Editable}">
+                          <TextBox Text="{Binding Text}" Width="90" FontSize="12" HorizontalContentAlignment="Right"
+                                   AutomationProperties.Name="{Binding Name}" />
+                          <TextBlock Text="%" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding Note}" FontSize="11" VerticalAlignment="Center" Margin="8 0 0 0"
+                                   Foreground="{DynamicResource TextDimBrush}" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="4">
+                  <Button Content="{x:Static loc:IndustryText.IndexManualSave}" Command="{Binding SaveCommand}"
+                          Padding="12 4" FontSize="12" />
+                  <Button Content="{x:Static loc:IndustryText.IndexManualClose}" Command="{Binding CloseCommand}"
+                          Padding="12 4" FontSize="12" />
+                  <TextBlock Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextDimBrush}" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </StackPanel>
+
+    <TextBlock Grid.Row="5" Text="{Binding ChartNote}" FontSize="10.5" Foreground="{DynamicResource TextFaintBrush}"
                TextWrapping="Wrap" Margin="0 8 0 4" />
 
     <!-- Six charts, three rows of two: every activity at once. -->
-    <ItemsControl Grid.Row="5" ItemsSource="{Binding Charts}">
+    <ItemsControl Grid.Row="6" ItemsSource="{Binding Charts}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
           <UniformGrid Rows="3" Columns="2" />

@@ -1348,7 +1348,7 @@ public class MainWindowViewModel : ReactiveObject
         // Indy Parks, Compare, and the System Index tool: one record of cost indices for both.
         IndyParksVm.Compare = new ParkComparisonViewModel(parkCompare, costIndexHistory, dbFactory);
         IndyParksVm.ParksChanged += () => _ = IndyParksVm.Compare.LoadParksAsync();
-        SystemIndexVm       = new SystemIndexViewModel(dbFactory, costIndexHistory);
+        SystemIndexVm       = new SystemIndexViewModel(dbFactory, costIndexHistory, buildCostService);
         WalletVm               = new WalletViewModel(dbFactory, errorLogger);
         ContractsVm            = new ContractsViewModel(dbFactory, esi, errorLogger, contractsService);
         NotificationsVm        = new NotificationsViewModel(dbFactory, esi, errorLogger);

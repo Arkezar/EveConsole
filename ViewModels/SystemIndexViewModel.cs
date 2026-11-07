@@ -25,13 +25,15 @@ public sealed class SystemSearchResult
 /// <summary>One system in the list: today's index for every activity.</summary>
 public sealed class SystemIndexRowVm : ReactiveObject
 {
-    public SystemIndexRowVm(int systemId, string name, string region, int slot, Action<SystemIndexRowVm> remove)
+    public SystemIndexRowVm(int systemId, string name, string region, int slot,
+        Action<SystemIndexRowVm> remove, Action<SystemIndexRowVm> edit)
     {
         SystemId = systemId;
         Name     = name;
         Region   = region;
         Slot     = slot;
         RemoveCommand = ReactiveCommand.Create(() => remove(this));
+        EditCommand   = ReactiveCommand.Create(() => edit(this));
     }
 
     public int    SystemId { get; }
@@ -47,16 +49,24 @@ public sealed class SystemIndexRowVm : ReactiveObject
         : Avalonia.Media.Brushes.Transparent;
 
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
+    public ReactiveCommand<Unit, Unit> EditCommand   { get; }
 
     private Dictionary<string, double> _current = [];
-    public void SetCurrent(Dictionary<string, double> byActivity)
+    private HashSet<string>            _manual  = [];
+
+    /// <param name="manual">The activities whose index was entered by hand, which ESI has none for.</param>
+    public void SetCurrent(Dictionary<string, double> byActivity, HashSet<string> manual)
     {
         _current = byActivity;
+        _manual  = manual;
         foreach (var n in new[] { nameof(Manufacturing), nameof(Reaction), nameof(Invention), nameof(Copying), nameof(MeResearch), nameof(TeResearch) })
             this.RaisePropertyChanged(n);
     }
 
-    private string Pct(string activity) => _current.TryGetValue(activity, out var v) ? SystemIndexReport.Pct(v) : "–";
+    // An index entered by hand is marked, and the legend under the table says what the mark means.
+    private string Pct(string activity) => _current.TryGetValue(activity, out var v)
+        ? SystemIndexReport.Pct(v) + (_manual.Contains(activity) ? "*" : "")
+        : "–";
     public string Manufacturing => Pct("manufacturing");
     public string Reaction      => Pct("reaction");
     public string Invention     => Pct("invention");
@@ -65,6 +75,60 @@ public sealed class SystemIndexRowVm : ReactiveObject
     public string TeResearch    => Pct("researching_time_efficiency");
 
     public double? Value(string activity) => _current.TryGetValue(activity, out var v) ? v : null;
+    public bool    IsManual(string activity) => _manual.Contains(activity);
+}
+
+/// <summary>One activity in the panel for entering indices by hand: ESI's value, which wins and
+/// cannot be entered over, or a percentage to type.</summary>
+public sealed class ManualIndexFieldVm : ReactiveObject
+{
+    public ManualIndexFieldVm(string activity, double? value, bool manual, DateTimeOffset? entered)
+    {
+        Activity = activity;
+        FromEsi  = value is not null && !manual;
+        EsiText  = FromEsi ? SystemIndexReport.Pct(value!.Value) : "";
+        Original = manual && value is { } v ? CostIndices.PercentText(v) : "";
+        _text    = Original;
+        Note     = FromEsi ? IndustryText.IndexManualFromEsi
+                 : entered is { } at ? string.Format(IndustryText.IndexManualEntered, at.ToLocalTime().ToString(CommonText.DateMonthDayYear))
+                 : IndustryText.IndexManualNone;
+    }
+
+    public string Activity { get; }
+    public string Name     => SystemIndexReport.ActivityName(Activity);
+    public bool   FromEsi  { get; }
+    public bool   Editable => !FromEsi;
+    public string EsiText  { get; }
+
+    /// <summary>The text as the panel opened, so a field nobody touched is not saved again.</summary>
+    public string Original { get; }
+    public string Note     { get; }
+
+    private string _text;
+    public string Text { get => _text; set => this.RaiseAndSetIfChanged(ref _text, value); }
+}
+
+/// <summary>The panel for entering one system's cost indices by hand.</summary>
+public sealed class ManualIndexEditorVm : ReactiveObject
+{
+    public ManualIndexEditorVm(int systemId, string title, List<ManualIndexFieldVm> fields,
+        Func<ManualIndexEditorVm, Task> save, Action close)
+    {
+        SystemId     = systemId;
+        Title        = title;
+        Fields       = fields;
+        SaveCommand  = ReactiveCommand.CreateFromTask(() => save(this));   // disabled while it runs
+        CloseCommand = ReactiveCommand.Create(close);
+    }
+
+    public int                      SystemId { get; }
+    public string                   Title    { get; }
+    public List<ManualIndexFieldVm> Fields   { get; }
+    public ReactiveCommand<Unit, Unit> SaveCommand  { get; }
+    public ReactiveCommand<Unit, Unit> CloseCommand { get; }
+
+    private string _status = "";
+    public string Status { get => _status; set => this.RaiseAndSetIfChanged(ref _status, value); }
 }
 
 /// <summary>
@@ -75,11 +139,14 @@ public sealed class SystemIndexViewModel : ReactiveObject
 {
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly CostIndexHistoryService         _history;
+    private readonly BuildCostService                _buildCosts;
 
-    public SystemIndexViewModel(IDbContextFactory<AppDbContext> dbFactory, CostIndexHistoryService history)
+    public SystemIndexViewModel(IDbContextFactory<AppDbContext> dbFactory, CostIndexHistoryService history,
+        BuildCostService buildCosts)
     {
-        _dbFactory = dbFactory;
-        _history   = history;
+        _dbFactory  = dbFactory;
+        _history    = history;
+        _buildCosts = buildCosts;
 
         Charts = [.. CostIndexHistoryService.Activities.Select(a => new IndexChartVm(a))];
 
@@ -100,26 +167,43 @@ public sealed class SystemIndexViewModel : ReactiveObject
 
     private bool _loaded;
 
-    /// <summary>The saved list, read once; then the numbers. Called when the tool is shown.</summary>
+    /// <summary>
+    /// The saved list, read once, and every system with an index entered by hand — the list is this
+    /// machine's, the values are the database's, so one entered on another machine shows here too.
+    /// Then the numbers. Called when the tool is shown.
+    /// </summary>
     public async Task InitializeAsync()
     {
+        var ids = new List<int>();
         if (!_loaded)
         {
             _loaded = true;
-            var ids = (UiState.Get(UiState.SystemIndexSystems) ?? "")
+            ids.AddRange((UiState.Get(UiState.SystemIndexSystems) ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => int.TryParse(s, out var id) ? id : 0).Where(id => id > 0).Distinct().ToList();
-            foreach (var r in await LookUpAsync(ids)) Systems.Add(Row(r));
+                .Select(s => int.TryParse(s, out var id) ? id : 0).Where(id => id > 0));
         }
+        ids.AddRange(await Task.Run(ManualSystemsAsync));
+
+        var added = ids.Distinct().Where(id => Systems.All(s => s.SystemId != id)).ToList();
+        if (added.Count > 0)
+            foreach (var r in await LookUpAsync(added)) Systems.Add(Row(r));
         await RefreshAsync();
     }
 
+    private async Task<List<int>> ManualSystemsAsync()
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        return await db.ManualCostIndices.AsNoTracking().Select(m => m.SolarSystemId).Distinct().ToListAsync();
+    }
+
+    // ✕ takes a system off this machine's list and never deletes what was entered for it.
     private SystemIndexRowVm Row(SystemSearchResult r) => new(r.SystemId, r.Name, r.Region, NextSlot(), row =>
     {
         Systems.Remove(row);
+        if (Editor?.SystemId == row.SystemId) Editor = null;
         Save();
         BuildCharts();
-    });
+    }, OpenEditor);
 
     /// <summary>The lowest colour slot no system in the list holds, so a removal does not
     /// repaint the others and the next one added fills the gap.</summary>
@@ -187,25 +271,113 @@ public sealed class SystemIndexViewModel : ReactiveObject
     private string _statusText = "";
     public string StatusText { get => _statusText; private set => this.RaiseAndSetIfChanged(ref _statusText, value); }
 
+    private Dictionary<(int SystemId, string Activity), DateTimeOffset> _manual = [];
+
+    /// <summary>Whether any listed index was entered by hand: the legend for its mark shows then.</summary>
+    public bool HasManualValues => _manual.Count > 0;
+
     private async Task RefreshAsync()
     {
         var ids = Systems.Select(s => s.SystemId).ToList();
         if (ids.Count == 0)
         {
-            _daily = [];
+            _daily  = [];
+            _manual = [];
+            this.RaisePropertyChanged(nameof(HasManualValues));
             StatusText = IndustryText.IndexStart;
             BuildCharts();
             return;
         }
 
-        var current = await Task.Run(() => _history.CurrentAsync(ids));
+        var current = await Task.Run(() => LoadIndicesAsync(ids));
         _daily      = await Task.Run(() => _history.DailyAsync(ids, CostIndexHistoryService.Activities));
+        _manual     = current.Manual;
         foreach (var s in Systems)
-            s.SetCurrent(CostIndexHistoryService.Activities
-                .Where(a => current.ContainsKey((s.SystemId, a)))
-                .ToDictionary(a => a, a => current[(s.SystemId, a)]));
+            s.SetCurrent(
+                CostIndexHistoryService.Activities
+                    .Where(a => current.Values.ContainsKey((s.SystemId, a)))
+                    .ToDictionary(a => a, a => current.Values[(s.SystemId, a)]),
+                [.. CostIndexHistoryService.Activities.Where(a => _manual.ContainsKey((s.SystemId, a)))]);
+        this.RaisePropertyChanged(nameof(HasManualValues));
         StatusText = string.Format(IndustryText.IndexStatus, Systems.Count);
         BuildCharts();
+    }
+
+    private async Task<EffectiveCostIndices> LoadIndicesAsync(IReadOnlyCollection<int> ids)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        return await CostIndices.LoadAsync(db, ids);
+    }
+
+    // ── Entering indices by hand ─────────────────────────────────────────────
+
+    private ManualIndexEditorVm? _editor;
+    public ManualIndexEditorVm? Editor { get => _editor; private set => this.RaiseAndSetIfChanged(ref _editor, value); }
+
+    private void OpenEditor(SystemIndexRowVm row) => Editor = new ManualIndexEditorVm(
+        row.SystemId, string.Format(IndustryText.IndexManualTitle, row.Name),
+        [.. CostIndexHistoryService.Activities.Select(a => new ManualIndexFieldVm(
+            a, row.Value(a), row.IsManual(a),
+            _manual.TryGetValue((row.SystemId, a), out var at) ? at : (DateTimeOffset?)null))],
+        SaveManualAsync, () => Editor = null);
+
+    /// <summary>
+    /// Saves what was typed, then recalculates the build costs, as Price Overrides does: the
+    /// Production Calculator reads the values on its next calculation, the stored build costs only
+    /// after this. A failed recalculation leaves the values saved, and says so.
+    /// </summary>
+    private async Task SaveManualAsync(ManualIndexEditorVm editor)
+    {
+        var fractions = new Dictionary<string, double?>();
+        foreach (var f in editor.Fields.Where(f => f.Editable && f.Text.Trim() != f.Original))
+        {
+            if (!CostIndices.TryReadPercent(f.Text, out var fraction))
+            {
+                editor.Status = string.Format(IndustryText.IndexManualInvalid, f.Name);
+                return;
+            }
+            fractions[f.Activity] = fraction;
+        }
+        if (fractions.Count == 0)
+        {
+            editor.Status = IndustryText.IndexManualUnchanged;
+            return;
+        }
+
+        try
+        {
+            await Task.Run(async () =>
+            {
+                await using var db = await _dbFactory.CreateDbContextAsync();
+                await CostIndices.SaveAsync(db, editor.SystemId, fractions);
+            });
+        }
+        catch (Exception ex)
+        {
+            editor.Status = string.Format(IndustryText.IndexManualSaveFailed, ex.Message);
+            return;
+        }
+
+        editor.Status = IndustryText.IndexManualSaving;
+        await RefreshAsync();
+        string status;
+        try
+        {
+            await Task.Run(() => _buildCosts.RecalculateAllAsync());
+            status = string.Format(IndustryText.IndexManualSaved, _buildCosts.StatusText);
+        }
+        catch (Exception ex)
+        {
+            status = string.Format(IndustryText.IndexManualRecalcFailed, ex.Message);
+        }
+
+        // Opened again from the saved values, so their dates show and an untouched field stays so.
+        if (ReferenceEquals(Editor, editor) && Systems.FirstOrDefault(s => s.SystemId == editor.SystemId) is { } row)
+        {
+            OpenEditor(row);
+            Editor!.Status = status;
+        }
+        else editor.Status = status;
     }
 
     // ── The charts: one an activity, a line a system ──────────────────────────

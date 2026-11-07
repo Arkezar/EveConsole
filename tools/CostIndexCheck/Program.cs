@@ -16,6 +16,11 @@ using Microsoft.EntityFrameworkCore;
 // ⚠️ SQLite, pinned, before anything reads the engine: never a developer machine's PostgreSQL.
 DbEngine.Pin(DbBackend.Sqlite);
 
+// Numbers are typed in English below, unless a check says otherwise, whatever the machine's language.
+var english = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+var polish  = System.Globalization.CultureInfo.GetCultureInfo("pl-PL");
+System.Globalization.CultureInfo.CurrentCulture = english;
+
 var failures = new List<string>();
 var checks   = 0;
 
@@ -126,6 +131,29 @@ try
         ("an activity ESI has no index for", new() { ["duplicating"] = 0.01 }),
         ("one bad value among good ones",    new() { ["copying"] = 0.01, ["invention"] = 2.0 }),
     ];
+    // ── A percentage as a person types it ──
+
+    double? Read(string text, System.Globalization.CultureInfo culture, out bool ok)
+    {
+        System.Globalization.CultureInfo.CurrentCulture = culture;
+        try { ok = CostIndices.TryReadPercent(text, out var fraction); return fraction; }
+        finally { System.Globalization.CultureInfo.CurrentCulture = english; }
+    }
+    Check("typing: blank is no value, not zero", Read("  ", english, out var blankOk) is null && blankOk);
+    Check("typing: 1.25 is 1.25%", Read("1.25", english, out var ok125) == 0.0125 && ok125);
+    Check("typing: zero is a value", Read("0", english, out var ok0) == 0 && ok0);
+    Check("typing: 100% is the most", Read("100", english, out var ok100) == 1 && ok100);
+    Check("typing: in the interface's format, 1,5 is 1.5% in Polish", Read("1,5", polish, out var okPl) == 0.015 && okPl);
+    foreach (var bad in new[] { "150", "-1", "abc", "NaN" })
+        Check($"typing: \"{bad}\" is refused", Read(bad, english, out var okBad) is null && !okBad);
+    foreach (var culture in new[] { english, polish })
+    {
+        System.Globalization.CultureInfo.CurrentCulture = culture;
+        var shown = CostIndices.PercentText(0.0125);
+        var back  = Read(shown, culture, out var okBack);
+        Check($"typing: a value shown for editing reads back unchanged ({culture.Name}: \"{shown}\")", back == 0.0125 && okBack);
+    }
+
     foreach (var (name, fractions) in refused)
     {
         var threw = false;

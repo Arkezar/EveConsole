@@ -2252,4 +2252,64 @@
     <value>{0}: {1}</value>
     <comment>Production Calculator missing cost index line. {0} is the solar system, {1} the industry activity, such as Reactions.</comment>
   </data>
+  <data name="IndexManualEditTip" xml:space="preserve">
+    <value>Enter cost indices by hand where ESI publishes none</value>
+    <comment>System Index tool: tooltip and accessible name of the button that opens the panel for entering a system's cost indices by hand.</comment>
+  </data>
+  <data name="IndexManualLegend" xml:space="preserve">
+    <value>* entered by hand: ESI publishes no index for that system and activity.</value>
+    <comment>System Index tool: legend under the table, explaining the asterisk after an index.</comment>
+  </data>
+  <data name="IndexManualTitle" xml:space="preserve">
+    <value>Cost indices for {0}, entered by hand</value>
+    <comment>System Index tool: heading of the panel for entering cost indices. {0} is the solar system.</comment>
+  </data>
+  <data name="IndexManualNote" xml:space="preserve">
+    <value>ESI publishes no cost index for wormholes. Enter one where ESI has none; where ESI has an index, its value is used. What you enter applies to every park and every client on this database, and saving recalculates the build costs.</value>
+    <comment>System Index tool: note at the top of the panel for entering cost indices by hand.</comment>
+  </data>
+  <data name="IndexManualFromEsi" xml:space="preserve">
+    <value>From ESI</value>
+    <comment>System Index tool, manual index panel: where an index shown comes from, when ESI publishes it and it cannot be entered.</comment>
+  </data>
+  <data name="IndexManualEntered" xml:space="preserve">
+    <value>Entered {0}</value>
+    <comment>System Index tool, manual index panel: when an index was entered by hand. {0} is the date.</comment>
+  </data>
+  <data name="IndexManualNone" xml:space="preserve">
+    <value>No index</value>
+    <comment>System Index tool, manual index panel: no index from ESI and none entered.</comment>
+  </data>
+  <data name="IndexManualSave" xml:space="preserve">
+    <value>Save and recalculate</value>
+    <comment>System Index tool, manual index panel: button saving the entered indices and recalculating build costs.</comment>
+  </data>
+  <data name="IndexManualClose" xml:space="preserve">
+    <value>Close</value>
+    <comment>System Index tool, manual index panel: button closing the panel.</comment>
+  </data>
+  <data name="IndexManualInvalid" xml:space="preserve">
+    <value>{0}: enter a percentage from 0 to 100, or leave it blank to remove the value. Nothing was saved.</value>
+    <comment>System Index tool, manual index panel: what was typed is not a percentage. {0} is the activity, such as Reactions.</comment>
+  </data>
+  <data name="IndexManualUnchanged" xml:space="preserve">
+    <value>Nothing has changed.</value>
+    <comment>System Index tool, manual index panel: Save was pressed with no value changed.</comment>
+  </data>
+  <data name="IndexManualSaving" xml:space="preserve">
+    <value>Saved — recalculating build costs…</value>
+    <comment>System Index tool, manual index panel: status while build costs are recalculated after saving.</comment>
+  </data>
+  <data name="IndexManualSaved" xml:space="preserve">
+    <value>Saved. {0}</value>
+    <comment>System Index tool, manual index panel: status after saving. {0} is the build cost status, such as "Build costs: last updated 12:01 (4,321 items)".</comment>
+  </data>
+  <data name="IndexManualRecalcFailed" xml:space="preserve">
+    <value>Saved, but recalculating the build costs failed: {0}</value>
+    <comment>System Index tool, manual index panel: the values were saved, the build cost recalculation was not. {0} is the error.</comment>
+  </data>
+  <data name="IndexManualSaveFailed" xml:space="preserve">
+    <value>Not saved: {0}</value>
+    <comment>System Index tool, manual index panel: saving failed. {0} is the error.</comment>
+  </data>
 </root>
