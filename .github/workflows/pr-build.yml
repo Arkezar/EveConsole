@@ -120,6 +120,13 @@ jobs:
       - name: Slack rich format check
         run: dotnet run --project tools/SlackRichCheck/SlackRichCheck.csproj -c Release
 
+      # ⚠️ Is a job still priced with the right system cost index? ESI publishes none for wormholes, so
+      # those are entered by hand, and count only where ESI has none. A hand-entered value that beat
+      # ESI's, a missing index read as a real zero, or "1,5" read as 15% all look like a finished fee.
+      # This checks the rule, the plan's missing list and the percentages, on a throwaway database.
+      - name: Cost index check
+        run: dotnet run --project tools/CostIndexCheck/CostIndexCheck.csproj -c Release
+
       # ⚠️ Does the Jabber client still refuse what it must? A server offering no encryption gets no
       # password, a forged carbon puts no words in anyone's mouth, a reconnect's replayed history sets off
       # no alerts, and private conversations stay out of the agent's reach. None of it shows from outside.
