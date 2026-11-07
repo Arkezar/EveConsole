@@ -403,17 +403,14 @@ public sealed class CostIndexHistoryService(IDbContextFactory<AppDbContext> dbFa
         "researching_material_efficiency", "researching_time_efficiency",
     ];
 
-    /// <summary>Today's indices: the snapshot the Production Calculator costs jobs with.</summary>
+    /// <summary>Today's indices: the ones the Production Calculator costs jobs with, ESI's or
+    /// entered by hand where ESI has none. The history below stays ESI's alone.</summary>
     public async Task<Dictionary<(int SystemId, string Activity), double>> CurrentAsync(
         IReadOnlyCollection<int> systems, CancellationToken ct = default)
     {
         if (systems.Count == 0) return [];
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return (await db.IndustryCostIndices.AsNoTracking()
-                    .Where(i => systems.Contains(i.SolarSystemId))
-                    .Select(i => new { i.SolarSystemId, i.Activity, i.CostIndex }).ToListAsync(ct))
-               .GroupBy(i => (i.SolarSystemId, i.Activity))
-               .ToDictionary(g => g.Key, g => g.First().CostIndex);
+        return (await CostIndices.LoadAsync(db, systems, ct)).Values;
     }
 
     /// <summary>One value a day per system and activity: the day's samples averaged.</summary>

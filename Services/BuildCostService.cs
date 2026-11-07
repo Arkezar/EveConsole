@@ -360,8 +360,8 @@ public class BuildCostService
             .Where(s => sysNames.Contains(s.Name))
             .ToDictionaryAsync(s => s.Name.ToUpperInvariant(), s => s.SolarSystemId, ct);
 
-        var costIndexRows = await db.IndustryCostIndices.AsNoTracking().ToListAsync(ct);
-        var costIndexMap  = costIndexRows.ToDictionary(c => (c.SolarSystemId, c.Activity), c => c.CostIndex);
+        // ESI's index, else one entered by hand: the same rule the calculator's context reads.
+        var costIndexMap = (await CostIndices.LoadAsync(db, ct: ct)).Values;
 
         double GetCostIndex(IndyStructure? s, string activity)
         {

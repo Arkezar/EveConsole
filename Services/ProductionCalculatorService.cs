@@ -207,9 +207,10 @@ public class ProductionCalculatorService(IDbContextFactory<AppDbContext> dbFacto
             .Where(ss => systemNames.Contains(ss.Name))
             .ToDictionaryAsync(ss => ss.Name, ss => ss.SolarSystemId, ct);
 
-        var costIndices = await db.IndustryCostIndices.AsNoTracking().ToListAsync(ct);
-        var ciLookup    = costIndices.GroupBy(c => c.SolarSystemId)
-            .ToDictionary(g => g.Key, g => g.ToDictionary(c => c.Activity, c => c.CostIndex));
+        // ESI's index, else one entered by hand (see CostIndices). The science fees read it too.
+        var ciLookup = (await CostIndices.LoadAsync(db, ct: ct)).Values
+            .GroupBy(i => i.Key.SystemId)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(i => i.Key.Activity, i => i.Value));
 
         // ── Category → structure mapping ────────────────────────────────────
         // A category can be listed with no structure chosen yet — park 2 has seven such rows. The
