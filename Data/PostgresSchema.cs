@@ -125,6 +125,17 @@ public static class PostgresSchema
             PRIMARY KEY ("StoreId", "Kind")
         )
         """,
+        // Cost indices entered by hand where ESI has none: every wormhole. An entity that arrived
+        // after databases existed. ⚠️ DOUBLE PRECISION: REAL is float4 here and would round it.
+        """
+        CREATE TABLE IF NOT EXISTS "ManualCostIndices" (
+            "SolarSystemId" INTEGER          NOT NULL,
+            "Activity"      TEXT             NOT NULL,
+            "CostIndex"     DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "UpdatedAt"     TIMESTAMPTZ      NOT NULL,
+            PRIMARY KEY ("SolarSystemId", "Activity")
+        )
+        """,
         // The NPC corporation facts the SDE import drops, fetched from ESI when a page is opened.
         // ⚠️ DOUBLE PRECISION for the tax rate: REAL is float4 on PostgreSQL and would round it.
         // Map and station fields the import was leaving in the file.

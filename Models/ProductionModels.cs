@@ -381,6 +381,13 @@ public class ProductionPlan
     public List<PlanItemNote> PricingWarnings { get; set; } = [];
 
     /// <summary>
+    /// Systems and activities jobs were priced in with no cost index known: a wormhole nobody has
+    /// entered one for, since ESI publishes none there. Those fees leave the index part out, so
+    /// the totals are low by that much. Its own list, for the reason the two above are separate.
+    /// </summary>
+    public List<MissingCostIndex> MissingCostIndices { get; set; } = [];
+
+    /// <summary>
     /// Blueprint copies a BPC-only item needs whose cost was left out because the user unticked
     /// "include BPC cost". The totals are without them; this says which.
     /// </summary>
@@ -421,6 +428,10 @@ public static class PlanTime
              : string.Format(IndustryText.FmtMinutes, Math.Max(1, (int)Math.Ceiling(t.TotalMinutes)));
     }
 }
+
+/// <summary>A system and activity a plan priced jobs in with no cost index known.</summary>
+/// <param name="SystemName">The park's English name for it; the screen shows it through SdeNames.</param>
+public sealed record MissingCostIndex(int SystemId, string SystemName, string Activity);
 
 /// <summary>
 /// One sentence a plan says about one item — a warning, or a note on a price. The item is kept

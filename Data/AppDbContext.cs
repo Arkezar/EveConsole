@@ -309,6 +309,7 @@ public class AppDbContext : DbContext
     // ── Build cost calculation ───────────────────────────────────────────────
     public DbSet<EsiAdjustedPrice>   EsiAdjustedPrices   => Set<EsiAdjustedPrice>();
     public DbSet<IndustryCostIndex>  IndustryCostIndices => Set<IndustryCostIndex>();
+    public DbSet<ManualCostIndex>    ManualCostIndices   => Set<ManualCostIndex>();
     public DbSet<BuildCost>              BuildCosts              => Set<BuildCost>();
     public DbSet<ReprocessingItemValue>  ReprocessingItemValues  => Set<ReprocessingItemValue>();
 
@@ -389,6 +390,11 @@ public class AppDbContext : DbContext
         mb.Entity<IndustryCostIndex>(e => {
             e.HasKey(x => new { x.SolarSystemId, x.Activity });
             e.Property(x => x.SolarSystemId).ValueGeneratedNever(); });
+
+        mb.Entity<ManualCostIndex>(e => {
+            e.HasKey(x => new { x.SolarSystemId, x.Activity });
+            e.Property(x => x.SolarSystemId).ValueGeneratedNever();
+            e.ToTable("ManualCostIndices"); });
 
         mb.Entity<BuildCost>(e => {
             e.HasKey(x => x.TypeId);

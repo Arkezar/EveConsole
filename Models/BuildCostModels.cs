@@ -14,6 +14,18 @@ public class IndustryCostIndex
     public double CostIndex     { get; set; }
 }
 
+/// <summary>
+/// A system cost index entered by hand, for a system and activity ESI publishes none for: every
+/// wormhole. ESI's own value always wins over it — see <c>CostIndices</c>.
+/// </summary>
+public class ManualCostIndex
+{
+    public int            SolarSystemId { get; set; }
+    public string         Activity      { get; set; } = "";
+    public double         CostIndex     { get; set; }   // a fraction, as ESI gives it: 0.0125 is 1.25%
+    public DateTimeOffset UpdatedAt     { get; set; }
+}
+
 public class BuildCost
 {
     public int      TypeId       { get; set; }

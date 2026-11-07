@@ -3157,6 +3157,17 @@ public class App : Application
                         CONSTRAINT "PK_IndustryCostIndices" PRIMARY KEY ("SolarSystemId", "Activity")
                     )
                     """);
+                // Indices entered by hand where ESI has none (every wormhole). Kept apart from the
+                // ESI table, which each fetch replaces whole.
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "ManualCostIndices" (
+                        "SolarSystemId" INTEGER NOT NULL,
+                        "Activity"      TEXT    NOT NULL,
+                        "CostIndex"     REAL    NOT NULL DEFAULT 0,
+                        "UpdatedAt"     TEXT    NOT NULL DEFAULT '',
+                        CONSTRAINT "PK_ManualCostIndices" PRIMARY KEY ("SolarSystemId", "Activity")
+                    )
+                    """);
                 db.Database.ExecuteSqlRaw("""
                     CREATE TABLE IF NOT EXISTS "BuildCosts" (
                         "TypeId"       INTEGER NOT NULL CONSTRAINT "PK_BuildCosts" PRIMARY KEY,
