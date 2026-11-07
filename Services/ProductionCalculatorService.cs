@@ -1282,6 +1282,7 @@ public class ProductionCalculatorService(IDbContextFactory<AppDbContext> dbFacto
             RootTypeIds          = requests.Where(r => jobPool.ContainsKey(r.TypeId)).Select(r => r.TypeId).ToList(),
             Warnings             = planWarnings,
             PricingWarnings      = bpcPriceNotes.Values.ToList(),
+            MissingCostIndices   = CostIndices.Missing(jobPool.Values, ciLookup),
             SkippedBpcs          = skippedBpcs.Values.ToList(),
             RawMaterials         = rawMaterials,
             Intermediates        = intermediates,

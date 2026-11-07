@@ -2236,4 +2236,20 @@
     <value>{0} (category '{1}' not assigned in this park; planned with no structure and no bonuses — set a catch-all facility on this park)</value>
     <comment>Production Calculator warning: no structure in the Indy Park is assigned the item's production category, and the park has no catch-all structure. {0} is the item, {1} the category's internal key (such as small_ships).</comment>
   </data>
+  <data name="CalcWarnMissingIndicesOne" xml:space="preserve">
+    <value>{0} system cost index is not known</value>
+    <comment>Production Calculator warning header, one form. {0} is how many system-and-activity pairs jobs were priced in with no cost index.</comment>
+  </data>
+  <data name="CalcWarnMissingIndicesOther" xml:space="preserve">
+    <value>{0} system cost indices are not known</value>
+    <comment>Production Calculator warning header, other form. {0} is how many system-and-activity pairs jobs were priced in with no cost index.</comment>
+  </data>
+  <data name="CalcMissingIndexNote" xml:space="preserve">
+    <value>ESI publishes no cost index for these systems, wormholes among them. Their job fees leave the index part out, so the totals are low by that much. Enter the index in System Index.</value>
+    <comment>Production Calculator note under the missing cost index warning. "System Index" is the name of the tool where indices are entered.</comment>
+  </data>
+  <data name="CalcMissingIndexLine" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Production Calculator missing cost index line. {0} is the solar system, {1} the industry activity, such as Reactions.</comment>
+  </data>
 </root>

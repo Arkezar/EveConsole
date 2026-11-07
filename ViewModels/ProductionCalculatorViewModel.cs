@@ -345,6 +345,9 @@ public class ProductionCalculatorViewModel : ReactiveObject
             this.RaisePropertyChanged(nameof(HasPricingWarnings));
             this.RaisePropertyChanged(nameof(PricingWarningHeader));
             this.RaisePropertyChanged(nameof(PricingWarningLines));
+            this.RaisePropertyChanged(nameof(HasIndexWarnings));
+            this.RaisePropertyChanged(nameof(IndexWarningHeader));
+            this.RaisePropertyChanged(nameof(IndexWarningLines));
             this.RaisePropertyChanged(nameof(HasSkippedBpcs));
             this.RaisePropertyChanged(nameof(SkippedBpcHeader));
             this.RaisePropertyChanged(nameof(SkippedBpcLines));
@@ -386,6 +389,21 @@ public class ProductionCalculatorViewModel : ReactiveObject
         : string.Format(IndustryText.CalcWarnBlueprintPrices, _plan.PricingWarnings.Count);
 
     public List<string> PricingWarningLines => ShownLines(_plan?.PricingWarnings);
+
+    public bool HasIndexWarnings => _plan?.MissingCostIndices.Count > 0;
+
+    public string IndexWarningHeader => _plan is null || _plan.MissingCostIndices.Count == 0
+        ? ""
+        : Plurals.Format(IndustryText.ResourceManager, nameof(IndustryText.CalcWarnMissingIndicesOther),
+                         _plan.MissingCostIndices.Count);
+
+    /// <summary>The systems and activities priced with no index, as the Summary tab lists them:
+    /// names in the interface language, in the order they then read.</summary>
+    public List<string> IndexWarningLines => _plan is null ? [] :
+        [.. _plan.MissingCostIndices
+            .Select(m => string.Format(IndustryText.CalcMissingIndexLine,
+                SdeNames.SolarSystem(m.SystemId, m.SystemName), SystemIndexReport.ActivityName(m.Activity)))
+            .Order(StringComparer.CurrentCulture)];
 
     private static List<string> ShownLines(List<PlanItemNote>? notes) =>
         notes is null ? [] : [.. notes.Select(n => n.DisplayText).Order(StringComparer.CurrentCulture)];

@@ -530,6 +530,28 @@
                 </StackPanel>
               </Border>
 
+              <!-- Jobs priced in a system with no cost index known: a wormhole nobody has entered one
+                   for, since ESI publishes none there. Their fees leave the index part out, so the
+                   totals are low by that much; the plan is still complete. -->
+              <Border IsVisible="{Binding HasIndexWarnings}"
+                      Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource WarnBrush}" BorderThickness="1"
+                      CornerRadius="4" Padding="10 8">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{Binding IndexWarningHeader}"
+                             Foreground="{DynamicResource WarnBrush}" FontSize="12" FontWeight="SemiBold"/>
+                  <TextBlock Text="{x:Static loc:IndustryText.CalcMissingIndexNote}"
+                             Foreground="{DynamicResource WarnBrush}" FontSize="11" TextWrapping="Wrap"/>
+                  <ItemsControl ItemsSource="{Binding IndexWarningLines}" Margin="0 2 0 0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding}" Foreground="{DynamicResource WarnBrush}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0 1"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
               <TextBlock Text="{x:Static loc:IndustryText.CostSummary}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" FontSize="13"/>
               <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static loc:IndustryText.RawMaterialsLabel}"  Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
