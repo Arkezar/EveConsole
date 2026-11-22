@@ -800,6 +800,8 @@ public sealed class AgentService : ReactiveObject
             => new ClaudeProvider(keys.ClaudeApiKey, m.ModelName, keys.ClaudeCacheTtl),
         AgentProviderType.OpenAI when !string.IsNullOrWhiteSpace(keys.OpenAiApiKey)
             => OpenAiCompatibleProvider.OpenAi(keys.OpenAiApiKey, m.ModelName),
+        _ when OpenCodePlan.For(m.Provider) is { } plan && !string.IsNullOrWhiteSpace(keys.OpenCodeApiKey)
+            => OpenAiCompatibleProvider.OpenCode(plan, keys.OpenCodeApiKey, m.ModelName),
         AgentProviderType.Local when !string.IsNullOrWhiteSpace(m.Endpoint)
             => OpenAiCompatibleProvider.Local(m.Endpoint, m.ModelName, think: m.Think),
         _ => null,

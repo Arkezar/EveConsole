@@ -116,10 +116,12 @@ public sealed class ServiceListChoice : ReactiveObject
 
         _loading?.Cancel();
         var cts = _loading = new CancellationTokenSource();
+        // Track the request when it starts: A → B → A must cancel B even if A was the last list to finish.
+        if (source.Question != _asked) Listings = [];
+        _asked = source.Question;
 
         if (source.Cannot is not null || source.Fetch is null)
         {
-            _asked   = source.Question;
             Listings = [];
             Status   = source.Cannot ?? "";
             return;
@@ -131,7 +133,6 @@ public sealed class ServiceListChoice : ReactiveObject
         {
             var found = await source.Fetch(cts.Token);
             if (cts.IsCancellationRequested) return;
-            _asked = source.Question;
 
             var chosen = Current;
             Listings = found.Count > 0 && chosen.Length > 0 && found.All(l => l.Id != chosen)

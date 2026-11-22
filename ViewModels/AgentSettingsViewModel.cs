@@ -395,18 +395,13 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
     public async Task<(bool Ok, string Message)> TestModelAsync(ModelProfileVm vm)
     {
         var profile = vm.ToProfile();
-        var keys    = new AgentSettings
-        {
-            ClaudeApiKey   = _claudeApiKey.Trim(),
-            ClaudeCacheTtl = _claudeCacheTtl,
-            OpenAiApiKey   = _openAiApiKey.Trim(),
-        };
-        if (AgentService.BuildProvider(profile, keys) is not { } provider)
+        if (AgentService.BuildProvider(profile, BuildSettings()) is not { } provider)
             return (false, profile.Provider switch
             {
                 _ when profile.ModelName.Length == 0 => SettingsText.AgentTestChooseModel,
                 AgentProviderType.Claude => SettingsText.AgentTestNeedClaudeKey,
                 AgentProviderType.OpenAI => SettingsText.AgentTestNeedOpenAiKey,
+                _ when vm.ShowOpenCode   => SettingsText.ModelNeedOpenCodeKey,
                 _                        => SettingsText.AgentTestNeedAddress,
             });
 
@@ -485,6 +480,17 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
             if (_selectedModel?.Provider == AgentProviderType.OpenAI) _selectedModel.KeyChanged();
             if (_selectedVoice?.Provider == TtsProvider.OpenAi) _selectedVoice.KeyChanged();
             if (_speechInputProvider == SpeechInputKind.OpenAiWhisper) _relistTranscription.OnNext(System.Reactive.Unit.Default);
+        }
+    }
+
+    private string _openCodeApiKey = "";
+    public string OpenCodeApiKey
+    {
+        get => _openCodeApiKey;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _openCodeApiKey, value);
+            if (_selectedModel is { ShowOpenCode: true } model) model.KeyChanged();
         }
     }
 
@@ -1031,6 +1037,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
         _claudeApiKey           = s.ClaudeApiKey;
         _claudeCacheTtl         = s.ClaudeCacheTtl == "1h" ? "1h" : "5m";
         _openAiApiKey           = s.OpenAiApiKey;
+        _openCodeApiKey         = s.OpenCodeApiKey;
         _persistHistory         = s.PersistHistory;
         _summarizationThreshold = s.SummarizationThreshold;
 
@@ -1176,6 +1183,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
             ClaudeApiKey  = _claudeApiKey.Trim(),
             ClaudeCacheTtl = _claudeCacheTtl,
             OpenAiApiKey  = _openAiApiKey.Trim(),
+            OpenCodeApiKey = _openCodeApiKey.Trim(),
 
             Models           = [.. Models.Select(m => m.ToProfile())],
             ConversationRole = new() { ModelId = _conversationModelId, FallbackId = _conversationFallbackId, Announce = _conversationAnnounce },

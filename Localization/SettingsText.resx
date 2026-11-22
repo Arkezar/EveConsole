@@ -2975,6 +2975,18 @@ The application will restart.</value>
     <value>OpenAI (paid)</value>
     <comment>Agent tab, service choice for a model. OpenAI is a name.</comment>
   </data>
+  <data name="ModelServiceOpenCodeZen" xml:space="preserve">
+    <value>OpenCode Zen (pay as you go)</value>
+  </data>
+  <data name="ModelServiceOpenCodeGo" xml:space="preserve">
+    <value>OpenCode Go (subscription)</value>
+  </data>
+  <data name="OpenCodeApiKey" xml:space="preserve">
+    <value>OpenCode Console API key (shared by Zen and Go)</value>
+  </data>
+  <data name="ModelNeedOpenCodeKey" xml:space="preserve">
+    <value>Enter your OpenCode Console API key above.</value>
+  </data>
   <data name="ModelHintServerNames" xml:space="preserve">
     <value>as the server names it</value>
     <comment>Agent tab, hint in the model box: type the model's name as the server calls it.</comment>

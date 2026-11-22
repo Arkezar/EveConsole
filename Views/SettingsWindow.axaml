@@ -2056,6 +2056,13 @@
                                              FontSize="10" Padding="0" HorizontalAlignment="Left" />
                           </StackPanel>
 
+                          <StackPanel IsVisible="{Binding ShowOpenCode}" Spacing="8">
+                            <TextBlock Text="{x:Static loc:SettingsText.OpenCodeApiKey}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBox Text="{Binding Owner.OpenCodeApiKey}" PasswordChar="•" />
+                            <HyperlinkButton Content="https://opencode.ai/console" NavigateUri="https://opencode.ai/console"
+                                             FontSize="10" Padding="0" HorizontalAlignment="Left" />
+                          </StackPanel>
+
                           <StackPanel IsVisible="{Binding ShowEndpoint}" Spacing="8">
                             <TextBlock Text="{x:Static loc:SettingsText.ServerAddress}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
                             <TextBox Text="{Binding Endpoint}" Watermark="http://gpu-box:11434" />

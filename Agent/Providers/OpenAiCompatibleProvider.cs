@@ -2,15 +2,15 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using EveConsole.Agent.Tools;
+using EveConsole.Services;
 
 namespace EveConsole.Agent.Providers;
 
 /// <summary>
 /// The OpenAI Chat Completions API, and everything that speaks it.
 ///
-/// <para>One provider for two settings. OpenAI's own service and a local model server (Ollama,
-/// LM Studio, vLLM) present the same wire protocol — <c>/v1/chat/completions</c>, the same
-/// message shapes, the same streamed chunks, the same tool-call encoding — and differ in a base
+/// <para>OpenAI, OpenCode and local model servers (Ollama, LM Studio, vLLM) present the same
+/// wire protocol — <c>/v1/chat/completions</c>, message shapes, streamed chunks and tool calls — and differ in a base
 /// URL, a key, and what they can be trusted to report. Writing them twice would be two copies of
 /// one parser drifting apart.</para>
 ///
@@ -45,6 +45,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     private readonly string _apiKey;
     private readonly string _model;
     private readonly bool   _isLocal;
+    private readonly OpenCodePlan? _openCode;
 
     /// <summary>A local reasoning model may think before it answers; false tells it not to.</summary>
     private readonly bool   _think;
@@ -61,8 +62,9 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         : !string.IsNullOrWhiteSpace(_apiKey));
 
     private OpenAiCompatibleProvider(string providerName, string baseUrl, string apiKey, string model, bool isLocal,
-                                     bool think = true)
+                                     bool think = true, OpenCodePlan? openCode = null)
     {
+        _openCode    = openCode;
         ProviderName = providerName;
         _baseUrl     = baseUrl;
         _apiKey      = apiKey;
@@ -72,6 +74,13 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     }
 
     private const string OpenAiBase = "https://api.openai.com/v1/";
+    private const string OpenAiModelsUrl = OpenAiBase + "models";
+
+    public static OpenAiCompatibleProvider OpenCode(OpenCodePlan plan, string apiKey, string model)
+        => new(plan.Name, plan.ChatBase, apiKey.Trim(), model.Trim(), isLocal: false, openCode: plan);
+
+    public static Task<IReadOnlyList<ModelListing>> ListOpenCodeModelsAsync(OpenCodePlan plan, string apiKey, CancellationToken ct = default)
+        => ListAsync(plan.ModelsUrl, apiKey.Trim(), plan.Name, ct, plan.OffersChat);
 
     /// <summary>OpenAI's own service. The model as its list names it; no default (see ModelListing).</summary>
     public static OpenAiCompatibleProvider OpenAi(string apiKey, string model)
@@ -111,7 +120,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     /// tab to offer. Throws with the reason when the server cannot be reached or refuses.
     /// </summary>
     public static Task<IReadOnlyList<ModelListing>> ListLocalModelsAsync(string endpoint, CancellationToken ct = default)
-        => ListAsync(LocalBase(endpoint), LocalToken, "The server", ct);
+        => ListAsync(LocalBase(endpoint) + "models", LocalToken, "The server", ct);
 
     /// <summary>
     /// The models OpenAI offers this key, newest first, less those plainly not for conversation:
@@ -124,13 +133,13 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     public static async Task<IReadOnlyList<ModelListing>> ListOpenAiModelsAsync(string apiKey, CancellationToken ct = default)
     {
         string[] notForTalk = ["tts", "whisper", "transcribe", "audio", "realtime", "dall-e", "image", "embedding", "moderation", "search", "sora"];
-        var all = await ListAsync(OpenAiBase, apiKey, "OpenAI", ct).ConfigureAwait(false);
+        var all = await ListAsync(OpenAiModelsUrl, apiKey, OpenAiName, ct).ConfigureAwait(false);
         return [.. all.Where(m => !notForTalk.Any(word => m.Id.Contains(word, StringComparison.OrdinalIgnoreCase)))];
     }
 
     /// <summary>OpenAI's speech models for this key — its voices — newest first: those named for it ("tts").</summary>
     public static async Task<IReadOnlyList<ModelListing>> ListOpenAiSpeechModelsAsync(string apiKey, CancellationToken ct = default)
-        => [.. (await ListAsync(OpenAiBase, apiKey, "OpenAI", ct).ConfigureAwait(false))
+        => [.. (await ListAsync(OpenAiModelsUrl, apiKey, OpenAiName, ct).ConfigureAwait(false))
                .Where(m => m.Id.Contains("tts", StringComparison.OrdinalIgnoreCase))];
 
     /// <summary>
@@ -139,28 +148,29 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
     /// does not read.
     /// </summary>
     public static async Task<IReadOnlyList<ModelListing>> ListOpenAiTranscriptionModelsAsync(string apiKey, CancellationToken ct = default)
-        => [.. (await ListAsync(OpenAiBase, apiKey, "OpenAI", ct).ConfigureAwait(false))
+        => [.. (await ListAsync(OpenAiModelsUrl, apiKey, OpenAiName, ct).ConfigureAwait(false))
                .Where(m => (m.Id.Contains("whisper", StringComparison.OrdinalIgnoreCase)
                             || m.Id.Contains("transcribe", StringComparison.OrdinalIgnoreCase))
                            && !m.Id.Contains("diarize", StringComparison.OrdinalIgnoreCase))];
 
     /// <summary>GET models from an OpenAI-style list: ids, in the order given — or newest first
     /// where the entries carry a "created" time, as OpenAI's do.</summary>
-    private static async Task<IReadOnlyList<ModelListing>> ListAsync(string baseUrl, string apiKey, string who, CancellationToken ct)
+    private static async Task<IReadOnlyList<ModelListing>> ListAsync(string modelsUrl, string apiKey, string who, CancellationToken ct,
+                                                                       Func<JsonElement, bool>? include = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
-        using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl + "models");
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        using var request = CreateRequest(HttpMethod.Get, modelsUrl, apiKey);
         using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"{who} answered {(int)response.StatusCode}: {(body.Length > 200 ? body[..200] + "…" : body)}",
+            throw new HttpRequestException($"{who} answered {(int)response.StatusCode}: {ErrorDetail(body, apiKey, 200)}",
                                            null, response.StatusCode);
 
         using var doc = JsonDocument.Parse(body);
         if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array) return [];
         return [.. data.EnumerateArray()
+            .Where(m => m.ValueKind == JsonValueKind.Object && (include is null || include(m)))
             .Select(m => (Id: m.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "",
                           Created: m.TryGetProperty("created", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt64() : 0))
             .Where(m => m.Id.Length > 0)
@@ -174,6 +184,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         IReadOnlyList<IAgentTool>?  tools           = null,
         Action<UsageReport>?        onUsage         = null,
         string?                     volatileContext = null,
+        string?                     sessionId       = null,
         [EnumeratorCancellation]
         CancellationToken           ct              = default)
     {
@@ -204,11 +215,12 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
             messages.Add(new { role = "system", content = "## Current App State\n" + volatileContext });
 
         var toolMap = tools?.ToDictionary(t => t.Name) ?? new Dictionary<string, IAgentTool>();
+        var openCodeSession = _openCode is null ? null : sessionId ?? Guid.NewGuid().ToString("N");
 
         // ⚠️ ConfigureAwait(false) on the enumeration — see ClaudeProvider for what happens
         // without it: the outer enumeration captured the UI context and the whole round ran on
         // the UI thread. tools/AgentStreamCheck runs this provider too.
-        await foreach (var chunk in StreamRoundAsync(messages, toolMap, MaxToolRounds, onUsage, ct)
+        await foreach (var chunk in StreamRoundAsync(messages, toolMap, MaxToolRounds, onUsage, openCodeSession, ct)
                        .ConfigureAwait(false))
             yield return chunk;
     }
@@ -218,12 +230,13 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         Dictionary<string, IAgentTool> toolMap,
         int                            maxRounds,
         Action<UsageReport>?           onUsage,
+        string?                        openCodeSession,
         [EnumeratorCancellation]
         CancellationToken              ct)
     {
         var roundStarted = System.Diagnostics.Stopwatch.StartNew();
 
-        using var request  = BuildRequest(messages, toolMap);
+        using var request  = BuildRequest(messages, toolMap, openCodeSession);
         using var response = await _http.SendAsync(
             request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
@@ -234,13 +247,14 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
             var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             // With the status, so a role can tell a server that is down from a request it refused.
             throw new HttpRequestException(
-                $"{ProviderName} returned {(int)response.StatusCode}: {Trim(body, 400)}", null, response.StatusCode);
+                $"{ProviderName} returned {(int)response.StatusCode}: {ErrorDetail(body, _apiKey, 400)}", null, response.StatusCode);
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         using  var reader      = new StreamReader(stream);
 
         var text       = new StringBuilder();
+        StringBuilder? reasoning = null;
         var calls      = new SortedDictionary<int, (string Id, string Name, StringBuilder Args)>();
         var stopReason = "";
         long promptTok = 0, completionTok = 0, cachedTok = 0;
@@ -289,6 +303,10 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
                 };
 
             if (!choice.TryGetProperty("delta", out var delta)) continue;
+
+            // Some OpenCode models require their reasoning back with a tool call, not in the visible answer.
+            if (_openCode is not null && delta.TryGetProperty("reasoning_content", out var thought) && thought.ValueKind == JsonValueKind.String)
+                (reasoning ??= new StringBuilder()).Append(thought.GetString());
 
             if (delta.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String)
             {
@@ -345,7 +363,7 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         else
         {
             inTok  = EstimateTokens(messages) + EstimateTokens(toolMap);
-            outTok = (text.Length + calls.Values.Sum(v => v.Args.Length + v.Name.Length)) / 4;
+            outTok = (text.Length + (reasoning?.Length ?? 0) + calls.Values.Sum(v => v.Args.Length + v.Name.Length)) / 4;
         }
 
         // The window is worth knowing only where the prompt can silently outgrow it, which is a
@@ -402,7 +420,12 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
             type     = "function",
             function = new { name = kv.Value.Name, arguments = kv.Value.Args.Length > 0 ? kv.Value.Args.ToString() : "{}" },
         }).ToList();
-        messages.Add(new { role = "assistant", content = text.Length > 0 ? text.ToString() : null, tool_calls = toolCalls });
+        var assistant = new Dictionary<string, object?>
+        {
+            ["role"] = "assistant", ["content"] = text.Length > 0 ? text.ToString() : null, ["tool_calls"] = toolCalls,
+        };
+        if (reasoning is not null) assistant["reasoning_content"] = reasoning.ToString();
+        messages.Add(assistant);
 
         // One tool message per call, in order. An image result cannot ride in a tool message —
         // the API takes only text there — so it follows as a user message the model can see,
@@ -448,12 +471,12 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
                 content = new List<object> { new { type = "text", text = "The image from the tool result:" } }.Concat(images).ToList(),
             });
 
-        await foreach (var chunk in StreamRoundAsync(messages, toolMap, maxRounds - 1, onUsage, ct)
+        await foreach (var chunk in StreamRoundAsync(messages, toolMap, maxRounds - 1, onUsage, openCodeSession, ct)
                        .ConfigureAwait(false))
             yield return chunk;
     }
 
-    private HttpRequestMessage BuildRequest(List<object> messages, Dictionary<string, IAgentTool> toolMap)
+    private HttpRequestMessage BuildRequest(List<object> messages, Dictionary<string, IAgentTool> toolMap, string? openCodeSession)
     {
         var body = new Dictionary<string, object?>
         {
@@ -477,11 +500,9 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
                 function = new { name = t.Name, description = t.Description, parameters = t.InputSchema },
             }).ToArray();
 
-        var request = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "chat/completions")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
-        };
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+        var request = CreateRequest(HttpMethod.Post, _baseUrl + "chat/completions", _apiKey);
+        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        if (openCodeSession is not null) request.Headers.Add("x-opencode-session", openCodeSession);
         request.Headers.Add("Accept", "text/event-stream");
         return request;
     }
@@ -603,8 +624,10 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(10));
-            using var request = new HttpRequestMessage(HttpMethod.Get, _baseUrl + "models");
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+            if (_openCode is { } plan)
+                return (await ListOpenCodeModelsAsync(plan, _apiKey, timeout.Token).ConfigureAwait(false)).Any(m => m.Id == _model);
+
+            using var request = CreateRequest(HttpMethod.Get, _baseUrl + "models", _apiKey);
             using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeout.Token)
                                             .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return false;
@@ -642,5 +665,17 @@ public sealed class OpenAiCompatibleProvider : IAgentProvider
         catch { using var doc = JsonDocument.Parse("{}");   return doc.RootElement.Clone(); }
     }
 
-    private static string Trim(string s, int max) => s.Length <= max ? s : s[..max] + "…";
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, string apiKey)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new("Bearer", apiKey);
+        request.Headers.UserAgent.ParseAdd($"EveConsole/{AppVersion.Number}");
+        return request;
+    }
+
+    private static string ErrorDetail(string body, string key, int max)
+    {
+        if (key.Length > 0) body = body.Replace(key, "[redacted]", StringComparison.Ordinal);
+        return body.Length <= max ? body : body[..max] + "…";
+    }
 }

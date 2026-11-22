@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
+using EveConsole.Agent.Providers;
 using EveConsole.Localization;
 
 namespace EveConsole.Agent;
 
-public enum AgentProviderType  { Claude, OpenAI, Local }
+public enum AgentProviderType  { Claude, OpenAI, Local, OpenCodeZen, OpenCodeGo }
 /// <summary>A voice's engine. LocalServer is any server speaking OpenAI's speech API —
 /// Kokoro-FastAPI, Chatterbox, Orpheus — usually on another machine's GPU.</summary>
 public enum TtsProvider        { None = 0, OpenAi = 2, ElevenLabs = 3, Kokoro = 4, Piper = 5, LocalServer = 6 }
@@ -63,6 +64,7 @@ public sealed class AgentSettings
 
     public string OpenAiApiKey  { get; set; } = "";
     public string OpenAiModel   { get; set; } = "";
+    public string OpenCodeApiKey { get; set; } = "";
 
     public string LocalEndpoint { get; set; } = "http://localhost:11434";
     public string LocalModel    { get; set; } = "";
@@ -197,7 +199,8 @@ public sealed class AgentSettings
     {
         AgentProviderType.Claude => new() { Provider = provider, Model = ClaudeModel },
         AgentProviderType.OpenAI => new() { Provider = provider, Model = OpenAiModel },
-        _                        => new() { Provider = provider, Model = LocalModel, Endpoint = LocalEndpoint },
+        AgentProviderType.Local  => new() { Provider = provider, Model = LocalModel, Endpoint = LocalEndpoint },
+        _                        => new() { Provider = provider },
     };
 
     /// <summary>Whether the old single-model fields hold a setup worth carrying over for a service
@@ -207,7 +210,8 @@ public sealed class AgentSettings
         AgentProviderType.Claude => !string.IsNullOrWhiteSpace(ClaudeApiKey),
         AgentProviderType.OpenAI => !string.IsNullOrWhiteSpace(OpenAiApiKey),
         // "llama3.1" was the untouched default until models came from the server's own list.
-        _                        => LocalEndpoint.Trim() != "http://localhost:11434" || LocalModel.Trim() is not ("" or "llama3.1"),
+        AgentProviderType.Local  => LocalEndpoint.Trim() != "http://localhost:11434" || LocalModel.Trim() is not ("" or "llama3.1"),
+        _                        => false,
     };
 
     /// <summary>
@@ -217,13 +221,14 @@ public sealed class AgentSettings
     public void MirrorLegacyModel()
     {
         if ((ModelById(AnalystRole.ModelId) ?? ModelById(ConversationRole.ModelId)) is not { } m) return;
-        Provider = m.Provider;
         switch (m.Provider)
         {
             case AgentProviderType.Claude: ClaudeModel = m.ModelName; break;
             case AgentProviderType.OpenAI: OpenAiModel = m.ModelName; break;
-            default: LocalEndpoint = m.Endpoint; LocalModel = m.ModelName; break;
+            case AgentProviderType.Local:  LocalEndpoint = m.Endpoint; LocalModel = m.ModelName; break;
+            default: return; // Older builds cannot use this provider. Keep their last setup.
         }
+        Provider = m.Provider;
     }
 
     // Context management
@@ -420,6 +425,7 @@ public sealed class ModelProfile
         {
             AgentProviderType.Claude => $"Claude — {model}",
             AgentProviderType.OpenAI => $"OpenAI — {model}",
+            _ when OpenCodePlan.For(Provider) is { } plan => $"{plan.Name} — {model}",
             _ => Uri.TryCreate(Endpoint.Trim(), UriKind.Absolute, out var uri)
                 ? string.Format(SettingsText.ModelDescribeLocalOn, model, uri.Host)
                 : string.Format(SettingsText.ModelDescribeLocal, model),

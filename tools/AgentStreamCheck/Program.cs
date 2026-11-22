@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using EveConsole.Agent;
 using EveConsole.Agent.Providers;
 using EveConsole.Agent.Tools;
+using EveConsole.ViewModels;
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // Does a streamed agent turn stay off the UI thread? — for EVERY provider.
@@ -60,6 +61,53 @@ failures.AddRange(Scenario.Run("Local (Ollama)",
     () => OpenAiCompatibleProvider.Local("http://fake-ollama:11434", "qwen2.5:7b"),
     new FakeOllama(), (h, usage) => ((FakeOllama)h).VerifyLocal(usage)));
 
+var legacy = JsonSerializer.Deserialize<AgentSettings>("""{"Provider":2,"LocalEndpoint":"http://gpu:11434","LocalModel":"old"}""")!;
+legacy.NormalizeModels();
+if (legacy.Models.Count != 1 || legacy.Models[0].Provider != AgentProviderType.Local)
+    failures.Add("A legacy local setup must not create OpenCode profiles.");
+
+foreach (var (type, name, gateway) in new[]
+{
+    (AgentProviderType.OpenCodeZen, "OpenCode Zen", "https://opencode.ai/inference"),
+    (AgentProviderType.OpenCodeGo,  "OpenCode Go",  "https://opencode.ai/inference/go"),
+})
+{
+    var profile = new ModelProfile { Provider = type, Model = "chat-model", Endpoint = "http://unused.invalid" };
+    var settings = legacy.Clone();
+    settings.Models = [profile];
+    settings.ConversationRole.ModelId = profile.Id;
+    settings.OpenAiApiKey = "not-the-console-key";
+    if (AgentService.BuildProvider(profile, settings) is not null)
+        failures.Add($"{name}: an OpenAI key was accepted without an OpenCode key.");
+    settings.OpenCodeApiKey = FakeOpenCode.Key;
+    settings.MirrorLegacyModel();
+    settings = JsonSerializer.Deserialize<AgentSettings>(JsonSerializer.Serialize(settings))!;
+    var saved = settings.Models.Single();
+    if (saved.Describe() != $"{name} — chat-model" || settings.Provider != AgentProviderType.Local || settings.LocalModel != "old")
+        failures.Add($"{name}: saving the profile lost its identity or overwrote the legacy setup.");
+
+    var provider = AgentService.BuildProvider(saved, settings) ?? throw new Exception($"{name}: no provider");
+    var server = new FakeOpenCode(gateway);
+    failures.AddRange(Scenario.Run(name, h => Seam(typeof(OpenAiCompatibleProvider), h), () => provider, server,
+        (_, usage) => server.VerifyPlan(name, usage)));
+    var plan = OpenCodePlan.For(type)!;
+    var listed = await OpenAiCompatibleProvider.ListOpenCodeModelsAsync(plan, settings.OpenCodeApiKey);
+    string[] expected = type == AgentProviderType.OpenCodeZen ? ["chat-model", "id-only"] : ["free-chat", "chat-model", "id-only"];
+    if (!listed.Select(m => m.Id).SequenceEqual(expected) || !await provider.IsAvailableAsync())
+        failures.Add($"{name}: wrong model list or availability probe.");
+    saved.Model = "not-in-this-plan";
+    if (await AgentService.BuildProvider(saved, settings)!.IsAvailableAsync())
+        failures.Add($"{name}: probe accepted a model not in this plan.");
+    try
+    {
+        await OpenAiCompatibleProvider.ListOpenCodeModelsAsync(plan, "refused-key");
+        failures.Add($"{name}: listing did not report a refused key.");
+    }
+    catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized && !ex.Message.Contains("refused-key")) { }
+}
+
+if (!await LatestModelListWinsAsync()) failures.Add("A late Go model list replaced the active Zen list.");
+
 if (failures.Count == 0)
 {
     Console.WriteLine();
@@ -72,6 +120,25 @@ Console.WriteLine("Agent stream check FAILED.");
 foreach (var f in failures) Console.WriteLine("  " + f);
 return 1;
 
+static async Task<bool> LatestModelListWinsAsync()
+{
+    var plan = "Zen";
+    var chosen = "";
+    var go = new TaskCompletionSource<IReadOnlyList<ModelListing>>();
+    var list = new ServiceListChoice(() => chosen, id => chosen = id,
+        () => new(null, plan, plan == "Go" ? _ => go.Task : _ => Task.FromResult<IReadOnlyList<ModelListing>>([new("alpha", "Alpha")])),
+        _ => "", () => "", ServiceListChoice.Holds.Models, "");
+
+    await list.LoadAsync();
+    plan = "Go"; chosen = "";
+    var pending = list.LoadAsync();
+    plan = "Zen"; chosen = "";
+    await list.LoadAsync();
+    go.SetResult([new("beta", "Beta")]);
+    await pending;
+    return list.Listings.Single().Id == "alpha" && chosen == "alpha";
+}
+
 static void Seam(Type provider, HttpMessageHandler handler)
 {
     var field = provider.GetField("_http", BindingFlags.NonPublic | BindingFlags.Static)
@@ -83,6 +150,8 @@ static void Seam(Type provider, HttpMessageHandler handler)
 
 static class Scenario
 {
+    public const string Session = "stream-check-session";
+
     /// <summary>One provider, one fake server: the threading assertions, then the fake's own.</summary>
     public static List<string> Run(string name, Action<HttpMessageHandler> seam, Func<IAgentProvider> make,
                                    IFakeServer server, Func<IFakeServer, IReadOnlyList<UsageReport>, List<string>> verifyWire)
@@ -108,7 +177,7 @@ static class Scenario
         {
             await foreach (var chunk in provider.StreamAsync("system", [new AgentMessage(MessageRole.User, "hi")], [tool],
                                                              onUsage: u => usage.Add(u),
-                                                             volatileContext: "Now: 12:00")
+                                                             volatileContext: "Now: 12:00", sessionId: Session)
                                                 .ConfigureAwait(false))
             {
                 text.Append(chunk);
@@ -132,6 +201,7 @@ static class Scenario
             failures.Add($"{name}: the fake server did not see every round — the turn did not complete.");
         if (!text.ToString().Contains("in the tab"))
             failures.Add($"{name}: the closing text never arrived.");
+        if (text.ToString().Contains("private reasoning")) failures.Add($"{name}: reasoning appeared in the visible answer.");
         if (ui.Posts > 0)
             failures.Add($"{name}: {ui.Posts} continuation(s) were posted to the UI context — an await in the streaming path has lost its ConfigureAwait(false).");
         if (toolOnUi)
@@ -228,7 +298,7 @@ abstract class FakeSse : HttpMessageHandler, IFakeServer
     protected virtual Task<HttpResponseMessage> SideRequestAsync(HttpRequestMessage req, CancellationToken ct)
         => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
 
-    protected sealed override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
     {
         await Task.Delay(20, ct).ConfigureAwait(false);
         if (req.Method == HttpMethod.Get) return await SideRequestAsync(req, ct).ConfigureAwait(false);
@@ -413,6 +483,44 @@ class FakeOpenAi : FakeSse
 
         Console.WriteLine("  wire                  : assistant turn echoed with reassembled call, tool result keyed by id, usage requested, user turn stamped, live state last");
         return failures;
+    }
+}
+
+sealed class FakeOpenCode(string gateway) : FakeOpenAi
+{
+    public const string Key = "test-console-key";
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var listing = req.Method == HttpMethod.Get;
+        var expected = gateway + (listing ? "/v1/models" : "/openai/v1/chat/completions");
+        if (req.RequestUri?.AbsoluteUri != expected || !req.Headers.UserAgent.Any(p => p.Product?.Name == "EveConsole"))
+            throw new InvalidOperationException($"Expected an EveConsole request to {expected}, got {req.RequestUri}.");
+        if (req.Headers.Authorization?.ToString() != $"Bearer {Key}")
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent($"Invalid {req.Headers.Authorization}") });
+        if (listing)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""
+                {"data":[{"id":"free-chat","type":"chat","cost":{"text":{"input":{"price":0},"output":{"price":0}}}},
+                         {"id":"image","type":"image"},{"id":"chat-model","type":"chat"},{"id":"id-only"}]}
+                """) });
+        if (!req.Headers.TryGetValues("x-opencode-session", out var ids) || ids.Single() != Scenario.Session)
+            throw new InvalidOperationException("The conversation ID did not reach the OpenCode gateway.");
+        return base.SendAsync(req, ct);
+    }
+
+    protected override async Task WriteRoundAsync(Func<string, Task> write, int round, string body, CancellationToken ct)
+    {
+        await write("""{"choices":[{"delta":{"reasoning_content":"private reasoning"}}]}""");
+        await base.WriteRoundAsync(write, round, body, ct);
+    }
+
+    public List<string> VerifyPlan(string name, IReadOnlyList<UsageReport> usage)
+    {
+        var errors = Verify();
+        if (usage.Any(u => u.Provider != name || u.Model != "chat-model" || u.IsLocal)) errors.Add("wrong usage attribution");
+        if (_bodies.Skip(1).Any(b => !b.Contains("\"reasoning_content\":\"private reasoning\"")))
+            errors.Add("a tool follow-up lost the model's reasoning");
+        return errors;
     }
 }
 

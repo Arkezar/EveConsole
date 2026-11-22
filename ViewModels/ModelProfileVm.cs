@@ -108,6 +108,8 @@ public sealed class ModelProfileVm : ModelChoice
         new(AgentProviderType.Local,  SettingsText.ModelServiceLocal),
         new(AgentProviderType.Claude, SettingsText.ModelServiceClaude),
         new(AgentProviderType.OpenAI, SettingsText.ModelServiceOpenAi),
+        new(AgentProviderType.OpenCodeZen, SettingsText.ModelServiceOpenCodeZen),
+        new(AgentProviderType.OpenCodeGo,  SettingsText.ModelServiceOpenCodeGo),
     ];
 
     public IReadOnlyList<ServiceOption> ServiceOptions => Services;
@@ -129,6 +131,7 @@ public sealed class ModelProfileVm : ModelChoice
             this.RaisePropertyChanged(nameof(ShowEndpoint));
             this.RaisePropertyChanged(nameof(ShowClaude));
             this.RaisePropertyChanged(nameof(ShowOpenAi));
+            this.RaisePropertyChanged(nameof(ShowOpenCode));
             this.RaisePropertyChanged(nameof(ModelWatermark));
             this.RaisePropertyChanged(nameof(ModelHelp));
             this.RaisePropertyChanged(nameof(NameWatermark));
@@ -143,6 +146,7 @@ public sealed class ModelProfileVm : ModelChoice
     public bool ShowEndpoint => _provider == AgentProviderType.Local;
     public bool ShowClaude   => _provider == AgentProviderType.Claude;
     public bool ShowOpenAi   => _provider == AgentProviderType.OpenAI;
+    public bool ShowOpenCode => OpenCodePlan.For(_provider) is not null;
 
     // ── Model ─────────────────────────────────────────────────────────────────
 
@@ -198,10 +202,12 @@ public sealed class ModelProfileVm : ModelChoice
     /// <summary>What to ask this model's service for, as things stand on the tab.</summary>
     private ServiceListChoice.Source ListSource()
     {
+        var plan = OpenCodePlan.For(_provider);
         var key = _provider switch
         {
             AgentProviderType.Claude => _owner.ClaudeApiKey.Trim(),
             AgentProviderType.OpenAI => _owner.OpenAiApiKey.Trim(),
+            _ when plan is not null  => _owner.OpenCodeApiKey.Trim(),
             _                        => "",
         };
         var endpoint = (_endpoint ?? "").Trim();
@@ -210,9 +216,11 @@ public sealed class ModelProfileVm : ModelChoice
         {
             AgentProviderType.Claude when key.Length == 0      => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedClaudeKey, question),
             AgentProviderType.OpenAI when key.Length == 0      => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedOpenAiKey, question),
+            _ when plan is not null && key.Length == 0         => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedOpenCodeKey, question),
             AgentProviderType.Local  when endpoint.Length == 0 => ServiceListChoice.Source.Unavailable(SettingsText.ModelNeedServerAddress, question),
             AgentProviderType.Claude => new(null, question, ct => ClaudeProvider.ListModelsAsync(key, ct)),
             AgentProviderType.OpenAI => new(null, question, ct => OpenAiCompatibleProvider.ListOpenAiModelsAsync(key, ct)),
+            _ when plan is not null  => new(null, question, ct => OpenAiCompatibleProvider.ListOpenCodeModelsAsync(plan, key, ct)),
             _                        => new(null, question, ct => OpenAiCompatibleProvider.ListLocalModelsAsync(endpoint, ct)),
         };
     }
@@ -227,8 +235,8 @@ public sealed class ModelProfileVm : ModelChoice
     private string ListFound(int n) => _provider switch
     {
         AgentProviderType.Claude => string.Format(SettingsText.ModelListFoundClaude, n),
-        AgentProviderType.OpenAI => string.Format(SettingsText.ModelListFoundOpenAi, n),
-        _                        => string.Format(SettingsText.ModelListFoundLocal, n),
+        AgentProviderType.Local  => string.Format(SettingsText.ModelListFoundLocal, n),
+        _                        => string.Format(SettingsText.ModelListFoundOpenAi, n),
     };
 
     private string ListEmpty() => _provider == AgentProviderType.Local
