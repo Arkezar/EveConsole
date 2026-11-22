@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace EveConsole.Agent.Providers;
 
-/// <summary>OpenCode Console uses one workspace key, but bills and lists models by gateway.</summary>
+/// <summary>Each OpenCode gateway uses the key for its own plan to list models and bill requests.</summary>
 public sealed class OpenCodePlan
 {
     private const string Gateway = "https://opencode.ai/inference";
@@ -26,6 +26,8 @@ public sealed class OpenCodePlan
         AgentProviderType.OpenCodeGo  => Go,
         _ => null,
     };
+
+    internal string SelectKey(string? zenKey, string? goKey) => (this == Go ? goKey : zenKey)?.Trim() ?? "";
 
     internal bool OffersChat(JsonElement model)
     {

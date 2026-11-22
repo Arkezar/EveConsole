@@ -220,7 +220,8 @@ Keep in mind this application is still very green.  You are free to play around 
 ### AI Agent ("Eden")
 - Built-in conversational assistant with access to your character/corp data via tool calls
 - Choose Claude, OpenAI, OpenCode Zen, OpenCode Go, or a local server such as Ollama. Each service supplies its own model list. Assign models to conversation, data questions, and summaries, with an optional fallback.
-- In **Settings → AI Agent → Models**, Zen and Go use the same [OpenCode Console API key](https://opencode.ai/console). Zen uses workspace credit. Go uses your subscription allowance.
+- In **Settings → AI Agent → Models**, enter a separate [OpenCode Console API key](https://opencode.ai/console) for each plan. For Go, use a key from the workspace with your subscription. Zen uses its own key and workspace credit.
+- If you configured one OpenCode plan, it keeps its key on upgrade. If you configured both, enter both keys again. The old file did not record which plan owned the last key, so neither plan uses it automatically.
 - Optional text-to-speech (Piper or Kokoro locally -- Piper is not available on macOS -- your own speech server, OpenAI or ElevenLabs) and speech-to-text (local Whisper or OpenAI) with a push-to-talk key, for hands-free interaction
 - Customizable name and voices
 - AI Usage - Token counts and costs by call. For OpenCode, the app tracks tokens but does not estimate charges. Check your balance in OpenCode Console.

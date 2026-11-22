@@ -64,7 +64,13 @@ public sealed class AgentSettings
 
     public string OpenAiApiKey  { get; set; } = "";
     public string OpenAiModel   { get; set; } = "";
-    public string OpenCodeApiKey { get; set; } = "";
+
+    // Missing from an old file (null) is not the same as deliberately cleared ("").
+    public string? OpenCodeZenApiKey { get; set; }
+    public string? OpenCodeGoApiKey  { get; set; }
+
+    [JsonInclude, JsonPropertyName("OpenCodeApiKey"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal string? LegacyOpenCodeApiKey { get; set; }
 
     public string LocalEndpoint { get; set; } = "http://localhost:11434";
     public string LocalModel    { get; set; } = "";
@@ -187,6 +193,24 @@ public sealed class AgentSettings
             ConversationRole = new() { ModelId = first.Id };
             AnalystRole      = new();
         }
+
+        // The old file kept only the last key entered. Never assign it to both billing accounts.
+        if (LegacyOpenCodeApiKey is { } oldKey)
+        {
+            if (OpenCodeZenApiKey is null && OpenCodeGoApiKey is null)
+            {
+                var zen = Models.Any(m => m.Provider == AgentProviderType.OpenCodeZen);
+                var go  = Models.Any(m => m.Provider == AgentProviderType.OpenCodeGo);
+                if (zen && !go) OpenCodeZenApiKey = oldKey;
+                if (go && !zen) OpenCodeGoApiKey  = oldKey;
+            }
+            // If the plan is unknown, keep the original in the file, unused, until a key is supplied.
+            if (string.IsNullOrWhiteSpace(oldKey) || !string.IsNullOrWhiteSpace(OpenCodeZenApiKey)
+                                                  || !string.IsNullOrWhiteSpace(OpenCodeGoApiKey))
+                LegacyOpenCodeApiKey = null;
+        }
+        OpenCodeZenApiKey ??= "";
+        OpenCodeGoApiKey  ??= "";
 
         if (ModelById(ConversationRole.ModelId) is null) ConversationRole.ModelId = Models[0].Id;
         if (AnalystRole.ModelId.Length > 0 && ModelById(AnalystRole.ModelId) is null) AnalystRole.ModelId = "";

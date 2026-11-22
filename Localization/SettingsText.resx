@@ -2981,11 +2981,14 @@ The application will restart.</value>
   <data name="ModelServiceOpenCodeGo" xml:space="preserve">
     <value>OpenCode Go (subscription)</value>
   </data>
-  <data name="OpenCodeApiKey" xml:space="preserve">
-    <value>OpenCode Console API key (shared by Zen and Go)</value>
+  <data name="OpenCodeGoApiKey" xml:space="preserve">
+    <value>OpenCode Go API key (subscription workspace)</value>
+  </data>
+  <data name="OpenCodeZenApiKey" xml:space="preserve">
+    <value>OpenCode Zen API key (pay-as-you-go workspace)</value>
   </data>
   <data name="ModelNeedOpenCodeKey" xml:space="preserve">
-    <value>Enter your OpenCode Console API key above.</value>
+    <value>Enter the OpenCode Console API key for this plan above.</value>
   </data>
   <data name="ModelHintServerNames" xml:space="preserve">
     <value>as the server names it</value>

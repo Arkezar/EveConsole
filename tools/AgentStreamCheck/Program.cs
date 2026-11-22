@@ -66,37 +66,70 @@ legacy.NormalizeModels();
 if (legacy.Models.Count != 1 || legacy.Models[0].Provider != AgentProviderType.Local)
     failures.Add("A legacy local setup must not create OpenCode profiles.");
 
-foreach (var (type, name, gateway) in new[]
+foreach (var (hasZen, hasGo) in new[] { (true, false), (false, true), (true, true), (false, false) })
 {
-    (AgentProviderType.OpenCodeZen, "OpenCode Zen", "https://opencode.ai/inference"),
-    (AgentProviderType.OpenCodeGo,  "OpenCode Go",  "https://opencode.ai/inference/go"),
+    var profiles = new List<ModelProfile>();
+    if (hasZen) profiles.Add(new() { Provider = AgentProviderType.OpenCodeZen });
+    if (hasGo)  profiles.Add(new() { Provider = AgentProviderType.OpenCodeGo });
+    var oldFile = JsonSerializer.SerializeToElement(new { OpenCodeApiKey = "legacy-key", Models = profiles });
+    var migrated = oldFile.Deserialize<AgentSettings>()!;
+    migrated.NormalizeModels();
+    var saved = JsonSerializer.SerializeToElement(migrated);
+    migrated = saved.Deserialize<AgentSettings>()!;
+    migrated.NormalizeModels();
+    if (migrated.OpenCodeZenApiKey != (hasZen && !hasGo ? "legacy-key" : "") ||
+        migrated.OpenCodeGoApiKey  != (hasGo && !hasZen ? "legacy-key" : "") ||
+        saved.TryGetProperty("OpenCodeApiKey", out _) != (hasZen == hasGo))
+        failures.Add($"Legacy OpenCode key migrated to the wrong plan (Zen: {hasZen}, Go: {hasGo}).");
+}
+
+var accounts = JsonSerializer.Deserialize<AgentSettings>("""
+    {"Provider":2,"LocalModel":"old","OpenAiApiKey":"not-the-console-key","OpenCodeApiKey":"obsolete",
+     "OpenCodeZenApiKey":"test-zen-key","OpenCodeGoApiKey":"test-go-key",
+     "Models":[{"Id":"go","Provider":4,"Model":"chat-model"},{"Id":"zen","Provider":3,"Model":"chat-model"}],
+     "ConversationRole":{"ModelId":"go"},"AnalystRole":{"ModelId":"zen"}}
+    """)!;
+accounts.NormalizeModels();
+accounts.MirrorLegacyModel();
+accounts = JsonSerializer.Deserialize<AgentSettings>(JsonSerializer.Serialize(accounts))!;
+using var roles = new ModelRoles();
+void Configure(AgentSettings s) => roles.Configure(s, m => AgentService.BuildProvider(m, s));
+foreach (var (type, name, gateway, expectedKey) in new[]
+{
+    (AgentProviderType.OpenCodeZen, "OpenCode Zen", "https://opencode.ai/inference",    "test-zen-key"),
+    (AgentProviderType.OpenCodeGo,  "OpenCode Go",  "https://opencode.ai/inference/go", "test-go-key"),
 })
 {
-    var profile = new ModelProfile { Provider = type, Model = "chat-model", Endpoint = "http://unused.invalid" };
-    var settings = legacy.Clone();
-    settings.Models = [profile];
-    settings.ConversationRole.ModelId = profile.Id;
-    settings.OpenAiApiKey = "not-the-console-key";
-    if (AgentService.BuildProvider(profile, settings) is not null)
-        failures.Add($"{name}: an OpenAI key was accepted without an OpenCode key.");
-    settings.OpenCodeApiKey = FakeOpenCode.Key;
-    settings.MirrorLegacyModel();
-    settings = JsonSerializer.Deserialize<AgentSettings>(JsonSerializer.Serialize(settings))!;
-    var saved = settings.Models.Single();
-    if (saved.Describe() != $"{name} — chat-model" || settings.Provider != AgentProviderType.Local || settings.LocalModel != "old")
+    ModelRoles.Seat Seat() => (type == AgentProviderType.OpenCodeGo ? roles.Conversation : roles.Analyst)!;
+    var missingKey = accounts.Clone();
+    if (type == AgentProviderType.OpenCodeGo) missingKey.OpenCodeGoApiKey = " ";
+    else missingKey.OpenCodeZenApiKey = "";
+    Configure(missingKey);
+    if (Seat().Provider is not null)
+        failures.Add($"{name}: another account's key was accepted without this plan's key.");
+    Configure(accounts);
+    var saved = Seat().Model;
+    if (saved.Describe() != $"{name} — chat-model" || accounts.Provider != AgentProviderType.Local || accounts.LocalModel != "old")
         failures.Add($"{name}: saving the profile lost its identity or overwrote the legacy setup.");
 
-    var provider = AgentService.BuildProvider(saved, settings) ?? throw new Exception($"{name}: no provider");
-    var server = new FakeOpenCode(gateway);
+    var provider = Seat().Provider ?? throw new Exception($"{name}: no provider after setting its key");
+    var server = new FakeOpenCode(gateway, expectedKey);
+    Seam(typeof(OpenAiCompatibleProvider), server);
+    if (!await provider.IsAvailableAsync())
+    {
+        failures.Add($"{name}: the gateway did not receive its own account key.");
+        continue;
+    }
     failures.AddRange(Scenario.Run(name, h => Seam(typeof(OpenAiCompatibleProvider), h), () => provider, server,
         (_, usage) => server.VerifyPlan(name, usage)));
     var plan = OpenCodePlan.For(type)!;
-    var listed = await OpenAiCompatibleProvider.ListOpenCodeModelsAsync(plan, settings.OpenCodeApiKey);
+    var listed = await OpenAiCompatibleProvider.ListOpenCodeModelsAsync(plan, expectedKey);
     string[] expected = type == AgentProviderType.OpenCodeZen ? ["chat-model", "id-only"] : ["free-chat", "chat-model", "id-only"];
-    if (!listed.Select(m => m.Id).SequenceEqual(expected) || !await provider.IsAvailableAsync())
+    if (!listed.Select(m => m.Id).SequenceEqual(expected))
         failures.Add($"{name}: wrong model list or availability probe.");
-    saved.Model = "not-in-this-plan";
-    if (await AgentService.BuildProvider(saved, settings)!.IsAvailableAsync())
+    var absent = saved.Clone();
+    absent.Model = "not-in-this-plan";
+    if (await AgentService.BuildProvider(absent, accounts)!.IsAvailableAsync())
         failures.Add($"{name}: probe accepted a model not in this plan.");
     try
     {
@@ -486,17 +519,15 @@ class FakeOpenAi : FakeSse
     }
 }
 
-sealed class FakeOpenCode(string gateway) : FakeOpenAi
+sealed class FakeOpenCode(string gateway, string expectedKey) : FakeOpenAi
 {
-    public const string Key = "test-console-key";
-
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
     {
         var listing = req.Method == HttpMethod.Get;
         var expected = gateway + (listing ? "/v1/models" : "/openai/v1/chat/completions");
         if (req.RequestUri?.AbsoluteUri != expected || !req.Headers.UserAgent.Any(p => p.Product?.Name == "EveConsole"))
             throw new InvalidOperationException($"Expected an EveConsole request to {expected}, got {req.RequestUri}.");
-        if (req.Headers.Authorization?.ToString() != $"Bearer {Key}")
+        if (req.Headers.Authorization?.ToString() != $"Bearer {expectedKey}")
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent($"Invalid {req.Headers.Authorization}") });
         if (listing)
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""

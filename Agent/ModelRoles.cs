@@ -131,7 +131,7 @@ public sealed class ModelRoles : IDisposable
         var signature = JsonSerializer.Serialize(new
         {
             s.Models, s.ConversationRole, s.AnalystRole, s.SummaryModelId,
-            s.ClaudeApiKey, s.ClaudeCacheTtl, s.OpenAiApiKey, s.OpenCodeApiKey,
+            s.ClaudeApiKey, s.ClaudeCacheTtl, s.OpenAiApiKey, s.OpenCodeZenApiKey, s.OpenCodeGoApiKey,
         });
 
         lock (_gate)

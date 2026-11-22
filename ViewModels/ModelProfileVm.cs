@@ -132,6 +132,7 @@ public sealed class ModelProfileVm : ModelChoice
             this.RaisePropertyChanged(nameof(ShowClaude));
             this.RaisePropertyChanged(nameof(ShowOpenAi));
             this.RaisePropertyChanged(nameof(ShowOpenCode));
+            this.RaisePropertyChanged(nameof(ShowOpenCodeGo));
             this.RaisePropertyChanged(nameof(ModelWatermark));
             this.RaisePropertyChanged(nameof(ModelHelp));
             this.RaisePropertyChanged(nameof(NameWatermark));
@@ -147,6 +148,7 @@ public sealed class ModelProfileVm : ModelChoice
     public bool ShowClaude   => _provider == AgentProviderType.Claude;
     public bool ShowOpenAi   => _provider == AgentProviderType.OpenAI;
     public bool ShowOpenCode => OpenCodePlan.For(_provider) is not null;
+    public bool ShowOpenCodeGo => _provider == AgentProviderType.OpenCodeGo;
 
     // ── Model ─────────────────────────────────────────────────────────────────
 
@@ -207,7 +209,7 @@ public sealed class ModelProfileVm : ModelChoice
         {
             AgentProviderType.Claude => _owner.ClaudeApiKey.Trim(),
             AgentProviderType.OpenAI => _owner.OpenAiApiKey.Trim(),
-            _ when plan is not null  => _owner.OpenCodeApiKey.Trim(),
+            _ when plan is not null  => plan.SelectKey(_owner.OpenCodeZenApiKey, _owner.OpenCodeGoApiKey),
             _                        => "",
         };
         var endpoint = (_endpoint ?? "").Trim();

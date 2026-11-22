@@ -439,11 +439,7 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
     public string ClaudeApiKey
     {
         get => _claudeApiKey;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _claudeApiKey, value);
-            if (_selectedModel?.Provider == AgentProviderType.Claude) _selectedModel.KeyChanged();
-        }
+        set => SetModelApiKey(ref _claudeApiKey, value, AgentProviderType.Claude);
     }
 
     // ── Claude prompt-cache lifetime ────────────────────────────────────────────
@@ -476,22 +472,31 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
         get => _openAiApiKey;
         set
         {
-            this.RaiseAndSetIfChanged(ref _openAiApiKey, value);
-            if (_selectedModel?.Provider == AgentProviderType.OpenAI) _selectedModel.KeyChanged();
+            SetModelApiKey(ref _openAiApiKey, value, AgentProviderType.OpenAI);
             if (_selectedVoice?.Provider == TtsProvider.OpenAi) _selectedVoice.KeyChanged();
             if (_speechInputProvider == SpeechInputKind.OpenAiWhisper) _relistTranscription.OnNext(System.Reactive.Unit.Default);
         }
     }
 
-    private string _openCodeApiKey = "";
-    public string OpenCodeApiKey
+    private string _openCodeZenApiKey = "";
+    public string OpenCodeZenApiKey
     {
-        get => _openCodeApiKey;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _openCodeApiKey, value);
-            if (_selectedModel is { ShowOpenCode: true } model) model.KeyChanged();
-        }
+        get => _openCodeZenApiKey;
+        set => SetModelApiKey(ref _openCodeZenApiKey, value, AgentProviderType.OpenCodeZen);
+    }
+
+    private string _openCodeGoApiKey = "";
+    public string OpenCodeGoApiKey
+    {
+        get => _openCodeGoApiKey;
+        set => SetModelApiKey(ref _openCodeGoApiKey, value, AgentProviderType.OpenCodeGo);
+    }
+
+    private void SetModelApiKey(ref string field, string value, AgentProviderType provider,
+                                [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+    {
+        this.RaiseAndSetIfChanged(ref field, value ?? "", name);
+        if (_selectedModel?.Provider == provider) _selectedModel.KeyChanged();
     }
 
     // ── context management ─────────────────────────────────────────────────────
@@ -1037,11 +1042,12 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
         _claudeApiKey           = s.ClaudeApiKey;
         _claudeCacheTtl         = s.ClaudeCacheTtl == "1h" ? "1h" : "5m";
         _openAiApiKey           = s.OpenAiApiKey;
-        _openCodeApiKey         = s.OpenCodeApiKey;
         _persistHistory         = s.PersistHistory;
         _summarizationThreshold = s.SummarizationThreshold;
 
         s.NormalizeModels();
+        _openCodeZenApiKey = s.OpenCodeZenApiKey ?? "";
+        _openCodeGoApiKey  = s.OpenCodeGoApiKey ?? "";
         Models.Clear();
         foreach (var model in s.Models) Models.Add(new ModelProfileVm(this, model));
         _selectedModel           = Models.FirstOrDefault();
@@ -1183,7 +1189,9 @@ public sealed class AgentSettingsViewModel : ReactiveObject, IKeyCaptureHost
             ClaudeApiKey  = _claudeApiKey.Trim(),
             ClaudeCacheTtl = _claudeCacheTtl,
             OpenAiApiKey  = _openAiApiKey.Trim(),
-            OpenCodeApiKey = _openCodeApiKey.Trim(),
+            OpenCodeZenApiKey = _openCodeZenApiKey.Trim(),
+            OpenCodeGoApiKey  = _openCodeGoApiKey.Trim(),
+            LegacyOpenCodeApiKey = _service.Settings.LegacyOpenCodeApiKey,
 
             Models           = [.. Models.Select(m => m.ToProfile())],
             ConversationRole = new() { ModelId = _conversationModelId, FallbackId = _conversationFallbackId, Announce = _conversationAnnounce },
